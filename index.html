@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Le 8 de SAM</title>
+<meta name="theme-color" content="#14101C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="images/icone-192.png">
+<link rel="apple-touch-icon" href="images/icone-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@500;600;700;800&display=swap" rel="stylesheet">
+<!-- Mode en ligne. Bloqué sur claude.ai : le jeu fonctionne quand même, seul le multijoueur est désactivé. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="decor">
+  <div id="bgFar"></div>
+  <div id="bgWrap"><div id="bgImg"></div></div>
+  <div id="bgShade"></div>
+  <div id="vignette"></div>
+</div>
+
+<div id="app">
+  <header id="topbar">
+    <div id="matchInfo">
+      <div id="matchTitle">Le 8 de SAM</div>
+      <div id="matchSub"></div>
+    </div>
+    <button id="menuBtn" aria-label="Menu">☰</button>
+  </header>
+
+  <div id="oppRow"></div>
+
+  <main id="table">
+    <div id="flash"></div>
+    <div id="chrono" class="hidden">30</div>
+    <div id="histCol"></div>
+    <div id="tableTop">
+    <div id="piles">
+      <div class="pileWrap">
+        <div class="slot" id="drawSlot"><div class="backcard">8</div><div id="drawCount">52</div></div>
+        <div class="pileLabel">Pioche</div>
+      </div>
+      <div class="pileWrap">
+        <div class="slot empty" id="discardSlot"></div>
+        <div id="suitTag" class="none"><b>—</b><span>couleur</span></div>
+      </div>
+    </div>
+    </div>
+    <div id="dirWrap"><span id="dirArrow">↻</span><span id="dirTxt">sens horaire</span></div>
+    <div id="turnLine"></div>
+  </main>
+
+  <footer id="handZone">
+    <div id="handTools">
+      <img id="meFace" alt="">
+      <button id="sortBtn">Tri : couleur</button>
+      <span id="handCount">8 cartes</span>
+    </div>
+    <div id="suitBar" class="hidden">
+      <span class="lab">Annonce</span>
+      <button data-s="H" class="r">♥<i>0</i></button>
+      <button data-s="S">♠<i>0</i></button>
+      <button data-s="D" class="r">♦<i>0</i></button>
+      <button data-s="C">♣<i>0</i></button>
+      <button id="suitCancel">Annuler</button>
+    </div>
+    <div id="hand"></div>
+    <button id="drawBtn">Piocher</button>
+    <button id="skipBtn" class="hidden">Passer la fin de manche</button>
+  </footer>
+</div>
+
+<!-- SALON EN LIGNE -->
+<div class="overlay hidden" id="lobbyScreen">
+  <div class="panel">
+    <h2 class="endTitle">Salon</h2>
+    <p class="sub" id="lobbySub"></p>
+
+    <div id="codeBox"><span id="codeVal">----</span><button class="btn ghost" id="copyCode">Partager</button></div>
+
+    <p class="sect">Ton personnage</p>
+    <div class="faces" id="lobbyFaces"></div>
+    <input id="pseudo" placeholder="Ton pseudo (facultatif)" maxlength="12" autocomplete="off">
+
+    <p class="sect">Places</p>
+    <div id="lobbySeats"></div>
+    <p class="hint" id="netHint"></p>
+
+    <button class="btn" id="readyBtn">Je suis prêt</button>
+    <button class="btn" id="launchBtn">Lancer la partie</button>
+    <button class="btn ghost" id="closeSession">Fermer la session</button>
+    <button class="btn ghost" id="lobbyBack">Quitter le salon</button>
+  </div>
+</div>
+
+<div id="introScreen" class="hidden"><div id="introRow"></div></div>
+<div id="netBar" class="hidden"><span id="netBarTxt"></span><button id="netBarBtn">Accueil</button></div>
+<div id="flyLayer"></div>
+<div id="bubLayer"></div>
+
+<div class="overlay" id="loadScreen">
+  <div class="panel" style="text-align:center">
+    <h1 class="title">LE 8<br>DE <em>SAM</em></h1>
+    <p class="sub" id="loadTxt">Chargement…</p>
+    <div id="loadTrack"><div id="loadBar"></div></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="homeScreen">
+  <div class="panel">
+    <h1 class="title">LE 8<br>DE <em>SAM</em></h1>
+    <p class="sub">Le 8 américain du quartier, avec les règles de la maison.</p>
+    <div id="statsBox">
+      <div><b id="sW">0</b><span>victoires</span></div>
+      <div><b id="sL">0</b><span>défaites</span></div>
+      <div><b id="sP">0</b><span>parties</span></div>
+    </div>
+    <div id="vsList"></div>
+    <div id="homeSession"></div>
+    <button class="btn" id="goSolo">Jouer hors ligne</button>
+    <button class="btn ghost" id="goCreate">Créer une partie en ligne</button>
+    <button class="btn ghost" id="goJoin">Rejoindre une partie</button>
+    <button class="btn ghost" id="goRules">Les règles</button>
+    <button class="btn ghost" id="goSet">Réglages</button>
+    <button class="btn ghost" id="fsHome">Plein écran</button>
+    <button class="btn ghost" id="resetStats">Remettre les compteurs à zéro</button>
+    <p class="hint" id="homeHint"></p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="joinScreen">
+  <div class="panel">
+    <h2 class="endTitle">Rejoindre</h2>
+    <p class="sub">Entre le code que l'hôte t'a envoyé, ou ouvre son lien.</p>
+    <input id="joinCode" placeholder="CODE" maxlength="8" autocomplete="off">
+    <button class="btn" id="joinGo">Rejoindre</button>
+    <button class="btn ghost" id="joinBack">Retour</button>
+    <p class="hint" id="joinHint"></p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="startScreen">
+  <div class="panel">
+    <h2 class="endTitle" id="cfgTitle">Partie</h2>
+    <p class="sub" id="cfgSub"></p>
+
+    <p class="sect">Joueurs</p>
+    <div class="row" id="nRow">
+      <button class="seg" data-n="2">2</button>
+      <button class="seg on" data-n="3">3</button>
+      <button class="seg" data-n="4">4</button>
+      <button class="seg" data-n="5">5</button>
+    </div>
+    <p class="hint" id="nHint"></p>
+
+    <p class="sect">Décor</p>
+    <div id="worldRow">
+      <button class="world on" data-w="quartier"><span>Quartier</span></button>
+      <button class="world" data-w="studio"><span>Studio</span></button>
+      <button class="world" data-w="sushi"><span>Sushi</span></button>
+    </div>
+
+    <p class="sect">Toi</p>
+    <div class="faces" id="face0"></div>
+
+    <div id="seatsBlock"></div>
+
+    <div id="toursBlock" style="display:none">
+      <p class="sect">Nombre de tours</p>
+      <div class="row" id="toursRow">
+        <button class="seg on" data-t="1">1</button>
+        <button class="seg" data-t="3">3</button>
+        <button class="seg" data-t="5">5</button>
+      </div>
+    </div>
+
+    <div id="chronoBlock" style="display:none">
+      <p class="sect">Temps par tour</p>
+      <div class="row" id="chronoRow">
+        <button class="seg on" data-c="0">Illimité</button>
+        <button class="seg" data-c="30">30 secondes</button>
+      </div>
+      <p class="hint">À l'expiration, le joueur pioche automatiquement.</p>
+    </div>
+
+    <div id="sessionBlock" style="display:none">
+      <p class="sect">Tableau de la soirée</p>
+      <div id="sessionList"></div>
+      <button class="btn ghost" id="resetSession">Remettre la soirée à zéro</button>
+    </div>
+
+    <button class="btn" id="playBtn">Distribuer</button>
+    <button class="btn ghost" id="cfgBack">Retour</button>
+  </div>
+</div>
+
+<!-- MENU -->
+<div class="overlay hidden" id="menuScreen">
+  <div class="panel">
+    <h2 class="endTitle">Pause</h2>
+    <p class="sub">La partie t'attend.</p>
+    <button class="btn" id="resumeBtn">Reprendre</button>
+    <div class="iconRow">
+      <button class="iconBtn" id="menuRules"><b>?</b>Règles</button>
+      <button class="iconBtn" id="menuSet"><b>⚙</b>Réglages</button>
+      <button class="iconBtn" id="fsBtn"><b>⛶</b>Plein écran</button>
+      <button class="iconBtn" id="restartBtn"><b>↻</b>Recommencer</button>
+    </div>
+    <button class="btn ghost" id="quitBtn">Quitter la partie</button>
+  </div>
+</div>
+
+<!-- FIN DE MANCHE -->
+<div class="overlay hidden" id="endScreen">
+  <div class="panel">
+    <h2 class="endTitle" id="endTitle">Manche terminée</h2>
+    <p class="sub" id="endSub"></p>
+    <div id="loseBox" style="display:none"><img id="loseFace" alt=""><div><div class="ln" id="loseName"></div><div class="ll" id="loseLine"></div></div></div>
+    <div id="winBox" style="display:none"><img id="winFace" alt=""><div><div class="wn" id="winName"></div><div class="wl" id="winLine"></div></div></div>
+    <div id="rankList"></div>
+    <p id="endLabel"></p>
+    <div id="endHand"></div>
+    <button class="btn" id="againBtn">Manche suivante</button>
+    <button class="btn ghost" id="backBtn">Quitter</button>
+  </div>
+</div>
+
+<!-- RÉGLAGES -->
+<div class="overlay hidden" id="setScreen">
+  <div class="panel">
+    <h2 class="endTitle">Réglages</h2>
+    <p class="sub">Conservés d'une partie à l'autre.</p>
+    <button class="toggle" id="tSound"><span>Son</span><span class="sw"></span></button>
+    <button class="toggle" id="tVibe"><span>Vibration</span><span class="sw"></span></button>
+    <p class="sect">Langage des adversaires</p>
+    <div class="row" id="trashRow">
+      <button class="seg" data-k="1">Chambrage</button>
+      <button class="seg" data-k="0">Poli</button>
+    </div>
+    <p class="hint" id="trashEx"></p>
+    <p class="sect">Vitesse de jeu</p>
+    <div class="row" id="speedRow">
+      <button class="seg" data-k="0">Lente</button>
+      <button class="seg" data-k="1">Normale</button>
+      <button class="seg" data-k="2">Rapide</button>
+    </div>
+    <p class="sect">Tri de la main</p>
+    <div class="row" id="sortRow">
+      <button class="seg" data-k="suit">Par couleur</button>
+      <button class="seg" data-k="rank">Par valeur</button>
+    </div>
+    <button class="btn" id="setBack">Fermer</button>
+  </div>
+</div>
+
+<!-- RÈGLES -->
+<div class="overlay hidden" id="rulesScreen">
+  <div class="panel">
+    <h2 class="endTitle">Les règles</h2>
+    <p class="sub">52 cartes, 8 en main. On suit la couleur ou la hauteur. Sinon on pioche, et on ne rejoue jamais après une pioche.</p>
+
+    <table class="rt">
+      <tr><th></th><th>Face à face</th><th>À 3</th></tr>
+      <tr><td class="c">A</td><td><span class="sgn a">+2</span> le suivant pioche 2</td><td><span class="sgn a">+2</span></td></tr>
+      <tr><td class="c">9</td><td><span class="sgn n">=9</span> un 9 ou il pioche 1</td><td><span class="sgn n">=9</span></td></tr>
+      <tr><td class="c">8</td><td><span class="sgn h">?</span> tu annonces la couleur</td><td><span class="sgn h">?</span></td></tr>
+      <tr><td class="c">7</td><td><span class="sgn c">↻</span> tu rejoues</td><td><span class="sgn c">↷</span> saute le suivant</td></tr>
+      <tr><td class="c">10</td><td><span class="sgn c">↻</span> tu rejoues</td><td><span class="sgn c">↻</span> tu rejoues</td></tr>
+      <tr><td class="c">V</td><td><span class="sgn c">↻</span> tu rejoues</td><td><span class="sgn c">⇄</span> change de sens</td></tr>
+    </table>
+
+    <p class="sub rulesTxt" style="margin-top:0">
+      <b>Attaques</b> — l'as et le 9 ne se contrent qu'avec la même hauteur. L'as s'additionne : 2, 4, 6, 8. Aucune autre carte n'est jouable sous attaque, pas même un 8. Celui qui encaisse passe son tour. Tu peux refuser de contrer pour garder ton as.<br><br>
+      <b>Ouverture</b> — la dame de cœur, sinon ♠ ♣ ♦, puis les rois. Sinon tirage au sort : la carte retourne dans la pioche et l'ouvreur pose ce qu'il veut. Il rejoue une fois en face à face, pas à 3.<br><br>
+      <b>Fin</b> — interdit de finir sur <span class="sgn c">↻</span>. En face à face : 7, 10 et valet. À 3 : le 10 seul. Finir sur un as ou un 9 peut être contré.<br><br>
+      <b>Cartes</b> — 8 à deux et trois joueurs, 7 à quatre, 6 à cinq.<br><br>
+      <b>Score à plusieurs</b> — à 3 : +1, 0, −1. À 4 : +2, +1, −1, −2. À 5 : +2, +1, 0, −1, −2. Dès qu'il ne reste que deux joueurs, ils passent en règles de face à face.
+    </p>
+    <button class="btn" id="rulesBack">Fermer</button>
+  </div>
+</div>
+
+<script src="data/personnages.js"></script>
+<script src="data/decors.js"></script>
+<script src="js/config.js"></script>
+<script src="js/profils.js"></script>
+<script src="js/son.js"></script>
+<script src="js/outils.js"></script>
+<script src="js/moteur.js"></script>
+<script src="js/ia.js"></script>
+<script src="js/affichage.js"></script>
+<script src="js/ecrans.js"></script>
+<script src="js/reseau.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "Le 8 de SAM",
+  "short_name": "8 de SAM",
+  "description": "Le 8 américain du quartier, avec les règles de la maison.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#14101C",
+  "theme_color": "#14101C",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "images/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

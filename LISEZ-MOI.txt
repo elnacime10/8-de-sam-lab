@@ -1,0 +1,31 @@
+LE 8 DE SAM — version découpée (squelette)
+==========================================
+
+Même jeu qu'avant, rangé en fichiers par rôle. Rien ne change à l'écran.
+
+  index.html        la page
+  css/style.css     l'apparence
+  data/             le contenu : tes potes, leurs répliques, les décors
+  js/moteur.js      les règles du jeu
+  js/ia.js          les adversaires ordinateur
+  js/affichage.js   la table et les animations
+  js/ecrans.js      menus et écrans
+  js/reseau.js      le multijoueur
+  js/son.js         les bruitages
+  js/profils.js     statistiques et mémoire
+  js/config.js      réglages
+  js/outils.js      petits outils partagés
+  js/main.js        démarrage
+  images/           décors, personnages, icônes
+  manifest.json     installation en application
+  sw.js             fonctionnement hors connexion
+
+DÉPOSER SUR GITHUB (dépôt 8-de-sam-labo)
+  1. Décompresse l'archive : tu obtiens un dossier "squelette".
+  2. Ouvre-le, sélectionne TOUT son contenu (Ctrl+A).
+  3. Sur le dépôt : Add file > Upload files, glisse la sélection.
+     Les dossiers css, data, js et images gardent leur structure.
+  4. En bas : Commit changes.
+  5. Settings > Pages > Branch main, / (root) > Save.
+
+À TESTER sur l'adresse du labo avant de copier sur le vrai dépôt.
