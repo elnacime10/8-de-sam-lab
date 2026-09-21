@@ -1,31 +1,12 @@
-LE 8 DE SAM — version découpée (squelette)
-==========================================
+LE 8 DE SAM — version complète à jour
 
-Même jeu qu'avant, rangé en fichiers par rôle. Rien ne change à l'écran.
+Ce dossier contient TOUT le jeu. Il remplace entièrement ce qui est sur le dépôt.
 
-  index.html        la page
-  css/style.css     l'apparence
-  data/             le contenu : tes potes, leurs répliques, les décors
-  js/moteur.js      les règles du jeu
-  js/ia.js          les adversaires ordinateur
-  js/affichage.js   la table et les animations
-  js/ecrans.js      menus et écrans
-  js/reseau.js      le multijoueur
-  js/son.js         les bruitages
-  js/profils.js     statistiques et mémoire
-  js/config.js      réglages
-  js/outils.js      petits outils partagés
-  js/main.js        démarrage
-  images/           décors, personnages, icônes
-  manifest.json     installation en application
-  sw.js             fonctionnement hors connexion
+  1. Extrais l'archive (clic droit > Extraire tout).
+  2. Ouvre le dossier "8-de-sam-complet".
+  3. Sélectionne tout son contenu (Ctrl+A).
+  4. Sur GitHub : Add file > Upload files, glisse la sélection à la souris.
+  5. Vérifie en bas : tu dois lire js/moteur.js, data/personnages.js, css/style.css.
+  6. Commit changes.
 
-DÉPOSER SUR GITHUB (dépôt 8-de-sam-labo)
-  1. Décompresse l'archive : tu obtiens un dossier "squelette".
-  2. Ouvre-le, sélectionne TOUT son contenu (Ctrl+A).
-  3. Sur le dépôt : Add file > Upload files, glisse la sélection.
-     Les dossiers css, data, js et images gardent leur structure.
-  4. En bas : Commit changes.
-  5. Settings > Pages > Branch main, / (root) > Save.
-
-À TESTER sur l'adresse du labo avant de copier sur le vrai dépôt.
+Les fichiers de même nom sont remplacés, les autres restent : c'est normal.
