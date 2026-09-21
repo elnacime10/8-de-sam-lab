@@ -28,17 +28,17 @@ const LINES = {
   sam: {
     atk : [{t:"Assis.",c:"Assis."},
            {t:"Ramassez, enfoirés.",c:"Ramassez, messieurs."},
-           {t:"Ramasse, et vite.",c:"Ramasse, et vite."},
+           {t:"Ramasse enfoirés.",c:"Ramasse, et vite."},
            {t:"J'suis l'dernier boss final.",c:"J'suis l'dernier boss final."},
            {t:"Échec et mat pour ta dame.",c:"Échec et mat pour ta dame."},
-           {t:"Reste là, j'ai pas fini.",c:"Reste là, j'ai pas fini."}],
-    hit : [{t:"Profite. Ça durera pas.",c:"Profite. Ça durera pas."},
-           {t:"C'est le mélange qui était mauvais.",c:"C'est le mélange qui était mauvais."}],
-    low : [{t:"Ah non. Ça se joue pas comme ça.",c:"Ah non. Ça se joue pas comme ça."},
-           {t:"Vas-y, essaie.",c:"Vas-y, essaie."}],
-    out : [{t:"Je t'avais dit.",c:"Je t'avais dit."},
+           {t:"Reste là sale chien.",c:"Reste là, j'ai pas fini."}],
+    hit : [{t:"Profite sale merde.",c:"Profite. Ça durera pas."},
+           {t:"T'as mélanger comme une merde.",c:"C'est le mélange qui était mauvais."}],
+    low : [{t:"Jamais tu fini sal fiotte",c:"Ah non. Ça se joue pas comme ça."},
+           {t:"Un 8 ou rien.",c:"Vas-y, essaie."}],
+    out : [{t:"Elle tchao sal merde",c:"Je t'avais dit."},
            {t:"Y a pas de hasard.",c:"Y a pas de hasard."}],
-    lose: [{t:"Revanche. Maintenant.",c:"Revanche. Maintenant."}]
+    lose: [{t:"Revanche sale batard",c:"Revanche. Maintenant."}]
   },
   mehmet: {
     atk : [{t:"Mange ça enfoiré !",c:"Mange ça, tiens !"},
