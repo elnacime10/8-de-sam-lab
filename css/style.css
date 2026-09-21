@@ -438,3 +438,48 @@ table.rt td.s{ width:38px; }
 .toggle.on .sw{ background:var(--gold); }
 .toggle.on .sw::after{ transform:translateX(21px); }
 .hint{ font-size:11.5px; color:var(--dim); font-weight:600; margin:-2px 0 4px; line-height:1.45; }
+
+
+/* ===== Livraison 3 : lisibilité de la partie ===== */
+/* la pioche disparaît de l'écran : elle ne sert que de point de départ aux animations */
+#piles{ position:relative; }
+#piles .pileWrap:first-child{ position:absolute; left:50%; top:0; transform:translateX(-50%);
+  opacity:0; pointer-events:none; }
+#deckInfo{ font-size:11.5px; color:var(--muted); font-weight:700; }
+
+/* la couleur demandée par un 8 recouvre la carte */
+#discardSlot{ position:relative; }
+.pileWrap{ position:relative; }
+#suitBig{ position:absolute; left:50%; top:calc(var(--pile-h,104px) * .5); transform:translate(-50%,-50%);
+  width:calc(var(--pile-w,74px) * .82); height:calc(var(--pile-w,74px) * .82); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none;
+  font-size:calc(var(--pile-w,74px) * .58); line-height:1; color:#fff;
+  box-shadow:0 0 0 4px rgba(255,255,255,.85), 0 8px 22px rgba(0,0,0,.6); animation:popSuit .35s; }
+#suitBig.hidden{ display:none; }
+@keyframes popSuit{ from{ transform:translate(-50%,-50%) scale(.3); opacity:0; } to{ transform:translate(-50%,-50%) scale(1); opacity:1; } }
+#table{ background:radial-gradient(60% 45% at 50% 48%, var(--tint,transparent), transparent 75%); transition:background .4s; }
+
+/* ce qu'a fait le joueur précédent, en clair */
+#actBar{ max-width:100%; padding:7px 14px; border-radius:12px; text-align:center;
+  background:rgba(10,8,14,.72); border:1px solid rgba(255,255,255,.16);
+  font-size:14px; font-weight:800; line-height:1.35; min-height:20px; }
+#actBar:empty{ display:none; }
+#actBar b{ color:var(--gold); }
+#actBar .r{ color:#FF8A7C; }
+#actBar.new{ animation:actNew .5s; }
+@keyframes actNew{ 0%{ transform:scale(.92); background:rgba(243,172,78,.45); } 100%{ transform:none; } }
+
+/* c'est à toi : impossible à rater */
+#turnBanner{ text-align:center; margin:0 auto 6px; width:max-content; max-width:100%;
+  padding:6px 18px; border-radius:999px; font-family:'Anton',sans-serif; font-size:18px; letter-spacing:1px;
+  background:linear-gradient(180deg,var(--gold),var(--gold-dk)); color:#2B1B05;
+  box-shadow:0 0 0 0 rgba(243,172,78,.6); animation:pulseTurn 1.3s infinite; }
+#turnBanner.hidden{ display:none; }
+@keyframes pulseTurn{ 0%{ box-shadow:0 0 0 0 rgba(243,172,78,.55); } 70%{ box-shadow:0 0 0 14px rgba(243,172,78,0); } 100%{ box-shadow:0 0 0 0 rgba(243,172,78,0); } }
+#handZone.mine #hand{ transform:translateY(-4px); transition:transform .25s; }
+#handZone.mine{ background:linear-gradient(180deg, rgba(243,172,78,.24), rgba(243,172,78,0) 70%);
+  box-shadow:0 -2px 0 rgba(243,172,78,.8) inset; }
+
+/* entre deux tours : qui est prêt */
+#readyInfo{ text-align:center; margin:10px 0 0; font-size:13px; color:var(--text); }
+#readyInfo b{ color:var(--gold); }

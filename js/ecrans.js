@@ -244,17 +244,19 @@ function shuffleSeats(){
   for (let i = idx.length - 1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [idx[i],idx[j]]=[idx[j],idx[i]]; }
   const ch = idx.map(i => MATCH.chars[i]), lv = idx.map(i => MATCH.levels[i]), hu = idx.map(i => MATCH.human[i]);
   const nm = idx.map(i => MATCH.names[i]), sc = idx.map(i => MATCH.session[i]), rd = idx.map(i => MATCH.ready[i]);
+  const tk = idx.map(i => MATCH.tok[i]), dq = idx.map(i => MATCH.dq[i]);
   const vers = [];                                   // ancien -> nouveau
   idx.forEach((anc, nouv) => { vers[anc] = nouv; });
   for (let i = 0; i < idx.length; i++){
     MATCH.chars[i]=ch[i]; MATCH.levels[i]=lv[i]; MATCH.human[i]=hu[i];
     MATCH.names[i]=nm[i]; MATCH.session[i]=sc[i]; MATCH.ready[i]=rd[i];
+    MATCH.tok[i]=tk[i]; MATCH.dq[i]=dq[i];
   }
   conns.forEach(c => { if (c.seat !== undefined) c.seat = vers[c.seat]; });
   ME = vers[ME];
 }
 $('#againBtn').addEventListener('click', () => {
-  if (MATCH.online && !MATCH.host) return;
+  if (MATCH.online){ netReadyClick(); return; }
   $('#endScreen').classList.add('hidden');
   nextStep();
 });
@@ -357,7 +359,7 @@ function endManche(){
   G.over = true;
   stopChrono();
   if (MATCH.n > 2){
-    const pts = pointsFor(MATCH.n);
+    const pts = pointsFor(activeN());
     G.out.forEach((p, i) => { MATCH.scores[p] += (pts[i] !== undefined ? pts[i] : 0); });
   }
   noteResult(G.out[0] === ME);
@@ -382,7 +384,7 @@ function showEnd(){
   } else {
     const fin = MATCH.tour >= MATCH.tours;
     $('#endTitle').textContent = fin ? 'Résultat final' : 'Tour ' + MATCH.tour + ' terminé';
-    const bar = pointsFor(MATCH.n);
+    const bar = pointsFor(activeN());
     const sgn = v => (v > 0 ? '+' : (v < 0 ? '−' : '')) + Math.abs(v);
     const maPlace = G.out.indexOf(ME);
     const monGain = bar[maPlace];
@@ -392,7 +394,7 @@ function showEnd(){
         + ' : ' + (monGain === 0 ? 'aucun point' : sgn(monGain) + ' point' + (Math.abs(monGain) > 1 ? 's' : '')) + '.';
     const pts = bar.map(sgn);
     const classement = fin
-      ? seats().slice().sort((a,b) => MATCH.scores[b] - MATCH.scores[a])
+      ? seats().slice().sort((a,b) => (MATCH.dq[a] - MATCH.dq[b]) || (MATCH.scores[b] - MATCH.scores[a]))
       : G.out;
     $('#rankList').innerHTML = classement.map((p, i) =>
       `<div class="rank${p === ME ? ' me' : ''}"><span class="pos">${i+1}</span>
@@ -413,7 +415,7 @@ function showEnd(){
   }
   const champ = MATCH.n === 2 ? G.out[0]
     : (MATCH.tour >= MATCH.tours && !$('#againBtn').textContent.includes('départage')
-       ? seats().slice().sort((a,b) => MATCH.scores[b] - MATCH.scores[a])[0] : G.out[0]);
+       ? seats().slice().sort((a,b) => (MATCH.dq[a] - MATCH.dq[b]) || (MATCH.scores[b] - MATCH.scores[a]))[0] : G.out[0]);
   if (champ === undefined || champ === null){ $('#winBox').style.display = 'none'; }
   else {
   $('#winBox').style.display = 'flex';
@@ -434,10 +436,9 @@ function showEnd(){
     : '';
   const order = (a,b) => (SUITS.indexOf(a.s)-SUITS.indexOf(b.s)) || (RANKS.indexOf(a.r)-RANKS.indexOf(b.r));
   $('#endHand').innerHTML = rest.slice().sort(order).map(c => cardHTML(c)).join('');
-  const invite = MATCH.online && !MATCH.host;
-  $('#againBtn').disabled = invite;
-  $('#againBtn').style.opacity = invite ? '.35' : '1';
-  if (invite) $('#againBtn').textContent = "En attente de l'hôte…";
+  $('#againBtn').disabled = false; $('#againBtn').style.opacity = '1';
+  $('#readyInfo').innerHTML = '';
+  if (MATCH.online) netEndScreen();          // en ligne : système de prêt / revanche
   $('#backBtn').textContent = MATCH.online ? 'Quitter la session' : 'Quitter';
   $('#endScreen').classList.remove('hidden');
 }
@@ -450,6 +451,7 @@ function nextStep(){
       const top = Math.max(...MATCH.scores.slice(0, MATCH.n));
       const exaequo = seats().filter(p => MATCH.scores[p] === top);
       if (exaequo.length > 1){ MATCH.tours++; MATCH.tour++; startManche(); return; }
+      if (MATCH.online) return;                  // en ligne, la suite passe par la revanche
       MATCH.tour = 1; MATCH.scores = [0,0,0,0,0];
       $('#startScreen').classList.remove('hidden');
       refreshSetup();

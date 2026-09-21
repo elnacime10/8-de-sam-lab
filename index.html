@@ -42,6 +42,7 @@
     <div id="flash"></div>
     <div id="chrono" class="hidden">30</div>
     <div id="histCol"></div>
+    <div id="actBar"></div>
     <div id="tableTop">
     <div id="piles">
       <div class="pileWrap">
@@ -50,6 +51,7 @@
       </div>
       <div class="pileWrap">
         <div class="slot empty" id="discardSlot"></div>
+        <div id="suitBig" class="hidden"></div>
         <div id="suitTag" class="none"><b>—</b><span>couleur</span></div>
       </div>
     </div>
@@ -62,6 +64,7 @@
     <div id="handTools">
       <img id="meFace" alt="">
       <button id="sortBtn">Tri : couleur</button>
+      <span id="deckInfo"></span>
       <span id="handCount">8 cartes</span>
     </div>
     <div id="suitBar" class="hidden">
@@ -72,6 +75,7 @@
       <button data-s="C">♣<i>0</i></button>
       <button id="suitCancel">Annuler</button>
     </div>
+    <div id="turnBanner" class="hidden">À toi de jouer</div>
     <div id="hand"></div>
     <button id="drawBtn">Piocher</button>
     <button id="skipBtn" class="hidden">Passer la fin de manche</button>
@@ -228,6 +232,7 @@
     <div id="rankList"></div>
     <p id="endLabel"></p>
     <div id="endHand"></div>
+    <p class="hint" id="readyInfo"></p>
     <button class="btn" id="againBtn">Manche suivante</button>
     <button class="btn ghost" id="backBtn">Quitter</button>
   </div>

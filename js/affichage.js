@@ -238,14 +238,17 @@ function render(){
   hand.innerHTML = '';
   $('#handCount').textContent = cards.length + (cards.length > 1 ? ' cartes' : ' carte');
   const cw = CW, avail = Math.max(120, hand.clientWidth - 8);
-  const twoRows = cards.length > 9;
-  hand.style.height = (twoRows ? CH + 46 : CH + 24) + 'px';
-  const rows = twoRows ? [cards.slice(0, Math.ceil(cards.length/2)), cards.slice(Math.ceil(cards.length/2))] : [cards];
+  const nRows = cards.length > 18 ? 3 : (cards.length > 9 ? 2 : 1);
+  const lift = Math.round(CH * 0.5);
+  hand.style.height = (CH + 24 + (nRows - 1) * lift) + 'px';
+  const per = Math.ceil(cards.length / nRows), rows = [];
+  for (let k = 0; k < cards.length; k += per) rows.push(cards.slice(k, k + per));
   let idx = 0;
   const myTurn = G.turn === ME && G.in[ME] && !G.over && !busy;
   rows.forEach((row, r) => {
     let step = cw + 5;
-    if (row.length > 1 && cw + (row.length-1)*step > avail) step = Math.max(Math.round(Math.max(34, CW*0.42)), (avail - cw)/(row.length-1));
+    /* on resserre autant qu'il faut : la main ne sort jamais de l'écran */
+    if (row.length > 1 && cw + (row.length-1)*step > avail) step = Math.max(12, (avail - cw)/(row.length-1));
     const total = cw + (row.length-1)*step;
     const x0 = Math.max(4, (hand.clientWidth - total)/2);
     const mid = (row.length-1)/2;
@@ -256,7 +259,7 @@ function render(){
       const el = box.firstElementChild;
       const rot = row.length > 1 ? (k - mid) * 1.7 : 0;
       el.style.left = (x0 + k*step) + 'px';
-      el.style.bottom = twoRows && r === 0 ? Math.round(CH * 0.52) + 'px' : '0px';
+      el.style.bottom = ((rows.length - 1 - r) * lift) + 'px';
       el.style.zIndex = r*100 + k;
       el.style.setProperty('--t', `rotate(${rot}deg) translateY(${Math.abs(k-mid)*1.3}px)`);
       if (i === selected) el.classList.add('sel');
@@ -266,6 +269,10 @@ function render(){
   });
 
   $('#handZone').classList.toggle('mine', myTurn);
+  $('#turnBanner').classList.toggle('hidden', !myTurn);
+  $('#deckInfo').textContent = 'pioche ' + G.deck.length;
+  renderAct();
+  renderSuitBig();
   const btn = $('#drawBtn');
   btn.disabled = !myTurn;
   if (G.pending && myTurn){
@@ -291,4 +298,46 @@ function setTurnLine(){
     else if (G.freeStart) el.textContent = 'Tu ouvres : pose la carte que tu veux';
     else el.textContent = hasPlayable(ME) ? 'À toi' : 'Rien à poser : pioche';
   } else { el.className = ''; el.textContent = nameOf(G.turn) + (busy ? ' joue…' : ' réfléchit…'); }
+}
+
+
+/* ---- Ce qu'a fait le joueur précédent, écrit en clair ---- */
+let lastActShown = 0;
+function renderAct(){
+  const el = $('#actBar'), a = G && G.lastAct;
+  if (!a){ el.innerHTML = ''; return; }
+  const qui = p => p === ME ? 'Tu' : nameOf(p);
+  const carte = (r, s) => `<b class="${isRed(s) ? 'r' : ''}">${r}${SUIT_CHAR[s]}</b>`;
+  let t;
+  if (a.k === 'play'){
+    t = qui(a.p) + (a.p === ME ? ' poses ' : ' pose ') + carte(a.r, a.s);
+    if (a.suit) t += ' et demande <b class="' + (isRed(a.suit) ? 'r' : '') + '">' + SUIT_CHAR[a.suit] + ' ' + SUIT_NAME[a.suit] + '</b>';
+    if (a.amt && (a.r === 'A' || a.r === '9')) t += ' — attaque <b>+' + a.amt + '</b>';
+    if (a.skip !== undefined) t += ' — ' + (a.skip === ME ? 'tu sautes ton tour' : qui(a.skip) + ' saute son tour');
+    if (a.rev) t += ' — le sens s\'inverse';
+  } else if (a.k === 'take'){
+    t = qui(a.p) + (a.p === ME ? ' encaisses ' : ' encaisse ') + '<b>' + (a.amt || 1) + ' carte' + ((a.amt || 1) > 1 ? 's' : '') + '</b>';
+  } else {
+    t = qui(a.p) + (a.p === ME ? ' pioches' : ' pioche');
+  }
+  if (el.innerHTML !== t) el.innerHTML = t;
+  if (a.n !== lastActShown){
+    lastActShown = a.n;
+    el.classList.remove('new'); void el.offsetWidth; el.classList.add('new');
+  }
+}
+
+/* ---- La couleur demandée par un 8 recouvre la carte, et teinte la table ---- */
+function renderSuitBig(){
+  const el = $('#suitBig');
+  const demande = G && G.top && G.top.r === '8' && G.activeSuit;
+  const tab = $('#table');
+  if (!demande){ el.classList.add('hidden'); tab.style.setProperty('--tint', 'transparent'); return; }
+  const col = SUIT_COL[G.activeSuit];
+  if (el.textContent !== SUIT_CHAR[G.activeSuit] || el.classList.contains('hidden')){
+    el.textContent = SUIT_CHAR[G.activeSuit];
+    el.style.background = col;
+    el.classList.remove('hidden');
+  }
+  tab.style.setProperty('--tint', col + '40');
 }

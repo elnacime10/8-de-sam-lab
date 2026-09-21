@@ -1,6 +1,6 @@
 /* Le 8 de SAM — cache hors connexion.
    Change VERSION à chaque mise à jour pour forcer le rechargement. */
-const VERSION = 'sam8-v3-squelette';
+const VERSION = 'sam8-v4';
 const FICHIERS = [
   "./",
   "./index.html",

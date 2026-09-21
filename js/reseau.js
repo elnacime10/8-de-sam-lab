@@ -30,7 +30,8 @@ function closeNet(msg, prevenir){
   clearInterval(pingT); pingT = null;
   clearInterval(graceT); graceT = null;
   stopChrono();
-  if (prevenir) conns.forEach(c => { try{ c.send({ t:'BYE' }); }catch(e){} });
+  if (prevenir) conns.forEach(c => { try{ c.send({ t:'BYE', msg: msg || '' }); }catch(e){} });
+  clearInterval(phaseT); phaseT = null; PHASE = null; GPHASE = null;
   conns.forEach(c => { try{ c.close(); }catch(e){} });
   conns = [];
   try{ if (hostConn) hostConn.close(); }catch(e){}
@@ -148,8 +149,16 @@ function openLobby(){
 function seatFor(c){
   if (G && !G.over){
     let reprise;
-    for (let p = 1; p < MATCH.n; p++)
-      if (MATCH.human[p] && G.in[p] && !conns.some(x => x.seat === p && x !== c)){ reprise = p; break; }
+    const tok = (c.metadata && c.metadata.tok) || '';
+    /* d'abord la place qui porte son jeton, sinon la première place humaine vacante */
+    /* après le tirage au sort, l'hôte peut être à n'importe quel siège : on les parcourt tous */
+    const libre = p => p !== ME && G.in[p] && !conns.some(x => x.seat === p && x !== c);
+    if (tok) for (let p = 0; p < MATCH.n; p++)
+      if (MATCH.tok[p] === tok && libre(p)){ reprise = p; break; }
+    if (reprise === undefined) for (let p = 0; p < MATCH.n; p++)
+      if (MATCH.human[p] && !MATCH.tok[p] && libre(p)){ reprise = p; break; }
+    if (reprise === undefined && !tok) for (let p = 0; p < MATCH.n; p++)
+      if (MATCH.human[p] && libre(p)){ reprise = p; break; }
     if (reprise === undefined){ try{ c.send({ t:'STARTED' }); c.close(); }catch(e){} return; }
     c.seat = reprise;
     if (NET.grace) delete NET.grace[reprise];
@@ -171,6 +180,7 @@ function seatFor(c){
   }
   MATCH.ready[c.seat] = false;
   MATCH.conn[c.seat] = true;
+  MATCH.tok[c.seat] = (c.metadata && c.metadata.tok) || '';
   try{ c.send({ t:'SEAT', seat:c.seat, match:publicMatch() }); }catch(e){}
   renderLobby(); broadcastLobby();
 }
@@ -189,7 +199,8 @@ function broadcastState(){
   G.seq = ++SEQ;                    // continu sur toute la session, jamais remis à zéro
   conns.forEach(c => { try{ c.send({ t:'STATE', seat:c.seat, g:viewFor(c.seat), match:publicMatch(),
     scores:MATCH.scores, session:MATCH.session, tour:MATCH.tour, matches:MATCH.matches,
-    chrono: chronoEnd ? Math.max(0, Math.ceil((chronoEnd - Date.now()) / 1000)) : 0 }); }catch(e){} });
+    chrono: chronoEnd ? Math.max(0, Math.ceil((chronoEnd - Date.now()) / 1000)) : 0,
+    phase: phasePublique() }); }catch(e){} });
 }
 /* chacun ne reçoit que sa main : les autres sont masquées */
 function viewFor(seat){
@@ -197,7 +208,7 @@ function viewFor(seat){
     hands:G.hands, top:G.top, activeSuit:G.activeSuit, freeStart:G.freeStart, dir:G.dir,
     in:G.in, out:G.out, turn:G.turn, pending:G.pending, pendingWinner:G.pendingWinner,
     over:G.over, deckN:G.deck.length, hist:G.hist, moveNo:G.moveNo, winner:G.winner,
-    seq:G.seq, actNo:G.actNo, lastAct:G.lastAct
+    seq:G.seq, actNo:G.actNo, lastAct:G.lastAct, mid:G.mid
   }));
   g.hands = g.hands.map((h, p) => p === seat ? h : h.map(() => ({ r:'?', s:'?' })));
   return g;
@@ -213,6 +224,7 @@ function onHostData(c, d){
   }
   if (d.t === 'NAME'){ MATCH.names[c.seat] = String(d.name || '').slice(0, 12); renderLobby(); broadcastLobby(); return; }
   if (d.t === 'READY'){ MATCH.ready[c.seat] = !!d.v; renderLobby(); broadcastLobby(); return; }
+  if (d.t === 'NEXT'){ if (PHASE){ PHASE.ready[c.seat] = !!d.v; phaseLastRest = -1; checkPhase(); } return; }
   if (d.t === 'MOVE' && G && !G.over && G.turn === c.seat) applyRemote(c.seat, d);
 }
 function onPeerGone(c){
@@ -259,7 +271,7 @@ function joinGame(code){
   let fait = false;
   const go = () => {
     if (fait) return; fait = true;
-    hostConn = peer.connect(code.toUpperCase());
+    hostConn = peer.connect(code.toUpperCase(), { metadata:{ tok: monJeton() } });
     lastHostSeen = Date.now();
     hostConn.on('open', () => { NET.state = 'lobby'; lastHostSeen = Date.now(); startPing(); $('#joinHint').textContent = 'Connecté.'; });
     hostConn.on('data', d => onGuestData(d));
@@ -281,11 +293,13 @@ function onGuestData(d){
   if (d.t === 'PING') return;
   if (d.t === 'FULL'){ $('#joinHint').textContent = 'Salon complet.'; return; }
   if (d.t === 'STARTED'){ $('#joinHint').textContent = 'La partie a déjà commencé.'; return; }
-  if (d.t === 'BYE'){ closeNet("L'hôte a fermé la session."); show('homeScreen'); refreshHome(); return; }
+  if (d.t === 'BYE'){ closeNet(d.msg || "L'hôte a fermé la session."); G = null;
+    $('#endScreen').classList.add('hidden'); show('homeScreen'); refreshHome(); return; }
   if (d.t === 'CHARNO'){ $('#netHint').textContent = 'Personnage déjà pris.'; return; }
   if (d.t === 'SEAT'){
     ME = d.seat; Object.assign(MATCH, d.match); MATCH.online = true; MATCH.host = false;
-    show('lobbyScreen'); renderLobby(); return;
+    if (!d.jeu){ show('lobbyScreen'); renderLobby(); }
+    return;
   }
   if (d.t === 'LOBBY'){ Object.assign(MATCH, d.match); renderLobby(); return; }
   if (d.t === 'STATE'){
@@ -296,15 +310,23 @@ function onGuestData(d){
     MATCH.scores = d.scores; MATCH.session = d.session; MATCH.tour = d.tour;
     if (d.matches !== undefined) MATCH.matches = d.matches;
     ME = d.seat;
+    const avant = G;
     const monTour = G && G.turn === ME;
+    GPHASE = d.phase || null;
     G = Object.assign({}, g, { deck:new Array(g.deckN).fill(0), discard:G ? G.discard : [],
       weak:[{},{},{},{},{}], playedRanks:{}, turnCount:0, stagnant:0, reshuffles:0, minHand:99, totalHands:0 });
     if (G.top) G.discard = [G.top];
     ['homeScreen','joinScreen','startScreen','lobbyScreen'].forEach(x => $('#'+x).classList.add('hidden'));
+    /* une nouvelle manche chasse l'écran de fin (c'était le blocage de « rejouer ») */
+    if (!g.over) $('#endScreen').classList.add('hidden');
+    /* les statistiques de l'invité comptent aussi, une fois par manche */
+    if (g.over && g.mid && g.mid !== countedMid){ countedMid = g.mid; noteResult(g.out[0] === ME); }
     sizeUp(); render();
     guestFeedback(g, monTour);
     guestChrono(d.chrono);
-    if (g.over) setTimeout(showEnd, 400);
+    const nouvelleFin = g.over && !(avant && avant.over && avant.mid === g.mid);
+    if (nouvelleFin) setTimeout(showEnd, 400);
+    else if (g.over) netEndScreen();
     return;
   }
 }
@@ -499,4 +521,141 @@ function armChrono(){
       if (!G.over && isAI(G.turn)) runAI(); else armChrono();
     }
   }, 250);
+}
+
+
+/* ============================================================
+   ENTRE DEUX MANCHES : prêt pour le tour suivant, ou revanche.
+   Une minute pour répondre. Qui ne répond pas est disqualifié
+   (tour suivant) ou laissé de côté (revanche). L'hôte décide seul
+   de la fin : s'il refuse la revanche, la session se ferme.
+   ============================================================ */
+let PHASE = null, GPHASE = null, phaseT = null, phaseLastRest = -1, countedMid = null;
+const PHASE_MS = 60000;
+
+function monJeton(){
+  try {
+    let t = localStorage.getItem('sam8_tok');
+    if (!t){ t = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('sam8_tok', t); }
+    return t;
+  } catch(e){ return ''; }
+}
+function phasePublique(){
+  if (!PHASE) return null;
+  return { k:PHASE.kind, ready:Object.assign({}, PHASE.ready), rest:Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000)) };
+}
+function phaseKind(){
+  if (MATCH.n <= 2) return 'revanche';
+  const vivants = seats().filter(p => !MATCH.dq[p]);
+  const top = Math.max(...vivants.map(p => MATCH.scores[p]));
+  const egalite = vivants.filter(p => MATCH.scores[p] === top).length > 1;
+  return (MATCH.tour < MATCH.tours || egalite) ? 'tour' : 'revanche';
+}
+function startPhase(kind){
+  PHASE = { kind, ready:{}, fin:Date.now() + PHASE_MS };
+  phaseLastRest = -1;
+  clearInterval(phaseT); phaseT = setInterval(checkPhase, 500);
+  checkPhase();
+}
+function humainsPresents(){
+  return seats().filter(p => MATCH.human[p] && !MATCH.dq[p] && (p === ME || conns.some(c => c.seat === p)));
+}
+function checkPhase(){
+  if (!PHASE) return;
+  const presents = humainsPresents();
+  const tous = presents.length > 0 && presents.every(p => PHASE.ready[p]);
+  if (tous || Date.now() >= PHASE.fin){ finishPhase(); return; }
+  const rest = Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000));
+  if (rest !== phaseLastRest){
+    phaseLastRest = rest;
+    broadcastState();
+    if (!$('#endScreen').classList.contains('hidden')) netEndScreen();
+  }
+}
+function dropSeat(p, msg){
+  conns.filter(c => c.seat === p).forEach(c => {
+    conns = conns.filter(x => x !== c);
+    c.seat = undefined;                                 /* il ne compte plus nulle part */
+    try{ c.send({ t:'BYE', msg }); }catch(e){}
+    setTimeout(() => { try{ c.close(); }catch(e){} }, 300);
+  });
+}
+function compactSeats(garder){
+  const garde = seats().filter(garder);
+  const vers = {}; garde.forEach((anc, nouv) => { vers[anc] = nouv; });
+  const serre = (tab, defaut) => { const o = garde.map(p => tab[p]); while (o.length < 5) o.push(defaut); return o; };
+  const pris = garde.map(p => MATCH.chars[p]);
+  MATCH.chars   = pris.concat(CHAR_IDS.filter(c => !pris.includes(c))).slice(0, 5);
+  MATCH.levels  = serre(MATCH.levels, 'moyen');
+  MATCH.human   = serre(MATCH.human, false);
+  MATCH.names   = serre(MATCH.names, '');
+  MATCH.session = serre(MATCH.session, 0);
+  MATCH.tok     = serre(MATCH.tok, '');
+  MATCH.ready   = garde.map(() => true).concat([false,false,false,false,false]).slice(0, 5);
+  MATCH.dq      = [false,false,false,false,false];
+  MATCH.n = garde.length;
+  ME = vers[ME];
+  conns.forEach(c => { c.seat = vers[c.seat]; });
+}
+function versAccueil(msg){
+  closeNet(msg, true); G = null;
+  $('#endScreen').classList.add('hidden'); show('homeScreen'); refreshHome();
+}
+function finishPhase(){
+  clearInterval(phaseT); phaseT = null;
+  const ph = PHASE; PHASE = null; phaseLastRest = -1;
+  const humains = seats().filter(p => MATCH.human[p] && !MATCH.dq[p]);
+  const absents = humains.filter(p => !ph.ready[p]);
+  $('#endScreen').classList.add('hidden');
+  if (ph.kind === 'tour'){
+    absents.forEach(p => {
+      MATCH.dq[p] = true;                               /* classé dernier jusqu'à la fin du match */
+      if (p !== ME) dropSeat(p, "Disqualifié : tu n'étais pas prêt pour le tour suivant.");
+    });
+    if (activeN() < 2) return versAccueil('Plus assez de joueurs pour continuer.');
+    nextStep();
+    return;
+  }
+  if (!ph.ready[ME]) return versAccueil('Session fermée : pas de revanche.');
+  absents.forEach(p => dropSeat(p, 'La revanche se joue sans toi.'));
+  compactSeats(p => !MATCH.dq[p] && (!MATCH.human[p] || !absents.includes(p)));
+  if (MATCH.n < 2) return versAccueil('Personne pour la revanche.');
+  MATCH.tour = 1; MATCH.scores = [0,0,0,0,0];
+  conns.forEach(c => { try{ c.send({ t:'SEAT', seat:c.seat, match:publicMatch(), jeu:true }); }catch(e){} });
+  startManche();
+}
+
+/* l'écran de fin, en ligne : bouton de prêt, compte à rebours, qui est prêt */
+function netEndScreen(){
+  if (MATCH.host && !PHASE && G && G.over){ startPhase(phaseKind()); return; }
+  const ph = MATCH.host ? phasePublique() : GPHASE;
+  const btn = $('#againBtn'), info = $('#readyInfo');
+  if (!ph){
+    btn.disabled = true; btn.style.opacity = '.35';
+    btn.textContent = "En attente de l'hôte…"; info.innerHTML = ''; return;
+  }
+  const moi = !!ph.ready[ME];
+  btn.disabled = false; btn.style.opacity = '1';
+  btn.textContent = ph.k === 'tour'
+    ? (moi ? 'Prêt ✓ (toucher pour annuler)' : 'Prêt pour le tour suivant')
+    : (moi ? 'Revanche acceptée ✓' : 'Revanche !');
+  const hs = seats().filter(p => MATCH.human[p] && !MATCH.dq[p]);
+  const n = hs.filter(p => ph.ready[p]).length;
+  info.innerHTML = '<b>' + n + '/' + hs.length + '</b> ' + (ph.k === 'tour' ? 'prêts' : 'partants')
+    + ' · <b>' + ph.rest + ' s</b><br>'
+    + hs.map(p => (ph.ready[p] ? '✓ ' : '… ') + (p === ME ? 'Toi' : nameOf(p))).join('  ·  ');
+}
+function netReadyClick(){
+  if (MATCH.host){
+    if (!PHASE) return;
+    PHASE.ready[ME] = !PHASE.ready[ME];
+    phaseLastRest = -1; checkPhase();
+    if (PHASE) netEndScreen();
+    return;
+  }
+  if (!GPHASE) return;
+  const v = !GPHASE.ready[ME];
+  GPHASE.ready[ME] = v;
+  sendHost({ t:'NEXT', v });
+  netEndScreen();
 }

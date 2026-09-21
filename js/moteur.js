@@ -27,8 +27,12 @@ const MATCH = {
   matches : 0,
   chrono:0,                           // 0 = illimité, sinon secondes
   online:false, host:false, code:'',
-  nextChooser:undefined
+  nextChooser:undefined,
+  dq  : [false,false,false,false,false],   // disqualifiés : ne jouent plus jusqu'à la fin du match
+  tok : ['','','','','']                    // jeton de reconnexion (hôte seulement)
 };
+/* nombre de joueurs encore dans le match */
+function activeN(){ return seats().filter(p => !MATCH.dq[p]).length; }
 /* 8 cartes jusqu'à 3 joueurs, une de moins par joueur au-delà */
 function handSize(n){ return n <= 3 ? 8 : (n === 4 ? 7 : 6); }
 /* barème symétrique : à 4 -> +2 +1 -1 -2 ; à 5 -> +2 +1 0 -1 -2 */
@@ -70,11 +74,12 @@ function newManche(){
     turnCount:0, minHand:99, totalHands:0, stagnant:0, reshuffles:0,
     weak:[], playedRanks:{}, hist:[], moveNo:0, seq:0, actNo:0, lastAct:null
   };
-  for (const p of seats()){ G.hands[p] = []; G.in[p] = true; G.weak[p] = {H:0,S:0,C:0,D:0}; }
-  const nc = handSize(MATCH.n);
-  for (let i = 0; i < nc; i++) for (const p of seats()) G.hands[p].push(G.deck.pop());
+  for (const p of seats()){ G.hands[p] = []; G.in[p] = !MATCH.dq[p]; G.weak[p] = {H:0,S:0,C:0,D:0}; }
+  G.mid = Date.now() + Math.random();         // identifiant unique de la manche
+  const nc = handSize(activeN());
+  for (let i = 0; i < nc; i++) for (const p of seats()) if (G.in[p]) G.hands[p].push(G.deck.pop());
   G.minHand = nc;
-  G.totalHands = nc * MATCH.n;
+  G.totalHands = nc * activeN();
   selected = -1; skipAll = false;
 }
 
@@ -136,12 +141,15 @@ function playCard(p, idx, suitChoice){
     switch (c.r){
       case 'A': G.pending = { type:'A', amount:2, by:p, target:nextSeat(p) }; break;
       case '9': G.pending = { type:'9', amount:1, by:p, target:nextSeat(p) }; break;
-      case 'V': if (duel()) replay = true; else G.dir *= -1; break;
-      case '7': if (duel()) replay = true; else skip = true; break;
+      case 'V': if (duel()) replay = true; else { G.dir *= -1; G.lastAct.rev = true; } break;
+      case '7': if (duel()) replay = true; else { skip = true; G.lastAct.skip = nextSeat(p); } break;
       case '10': replay = true; break;
       case '8': if (G.hands[p].length || MATCH.n > 2) G.activeSuit = suitChoice || c.s; break;
     }
   }
+
+  if (c.r === '8') G.lastAct.suit = G.activeSuit;     // pour l'annonce : couleur demandée
+  if (G.pending) G.lastAct.amt = G.pending.amount;     // et montant de l'attaque
 
   /* fin de main */
   if (G.hands[p].length === 0){
@@ -176,8 +184,8 @@ function noteDraw(p){ if (G.activeSuit && G.weak[p]) G.weak[p][G.activeSuit] = M
 function weakOf(p, s){ return (G.weak[p] && G.weak[p][s]) || 0; }
 
 function takeHit(q){
-  G.actNo++; G.lastAct = { n:G.actNo, p:q, k:'take' };
   const amt = G.pending ? G.pending.amount : 1;
+  G.actNo++; G.lastAct = { n:G.actNo, p:q, k:'take', amt };
   const got = draw(q, amt);
   noteDraw(q);
   const w = G.pendingWinner;
@@ -259,7 +267,7 @@ function openManche(){
         G.moveNo++; G.hist.unshift({ n:G.moveNo, r:c.r, s:c.s, p });
         G.playedRanks[c.r] = 1;
         G.turn = p;
-        if (MATCH.n > 2) advance(p, false);        // à 3 : pas de seconde carte
+        if (activeN() > 2) advance(p, false);        // à 3 : pas de seconde carte
         flash(nameOf(p) + ' ouvre avec ' + c.r + SUIT_CHAR[c.s]);
         render();
         if (G.turn !== ME) runAI();
@@ -284,7 +292,7 @@ function departage(){
     MATCH.nextChooser = chooser === 0 ? 1 : 0;
     flash((chooser === ME ? 'Tu annonces ' : nameOf(chooser) + ' annonce ') + (pick === 'r' ? 'rouge' : 'noir') + ' — ' + c.r + SUIT_CHAR[c.s]);
   } else {
-    const tirs = seats().map(p => { refill(); return { p, c:G.deck.pop() }; });
+    const tirs = seats().filter(p => G.in[p]).map(p => { refill(); return { p, c:G.deck.pop() }; });
     tirs.sort((a,b) => (RANKS.indexOf(b.c.r) - RANKS.indexOf(a.c.r)) || (SUITS.indexOf(a.c.s) - SUITS.indexOf(b.c.s)));
     starter = tirs[0].p;
     for (const t of tirs) G.deck.push(t.c);
@@ -294,7 +302,7 @@ function departage(){
   G.turn = starter;
   G.freeStart = true;
   G.top = null; G.activeSuit = null;
-  if (MATCH.n === 2) G.openingExtra = starter;     // face à face : il rejoue une fois
+  if (activeN() === 2) G.openingExtra = starter;     // face à face : il rejoue une fois
   render();
   if (starter !== ME) runAI();
 }
