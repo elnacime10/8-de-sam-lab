@@ -38,18 +38,7 @@ button:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
 #bgImg{ position:absolute; inset:0; background-size:cover; background-position:center var(--bgY,42%); }
 #bgShade{ position:absolute; inset:0;
   background:linear-gradient(180deg, rgba(10,8,16,.50) 0%, rgba(10,8,16,.06) 20%, rgba(10,8,16,.10) 52%, rgba(10,8,16,.62) 88%, rgba(10,8,16,.80) 100%); }
-#sky{ position:absolute; left:0; right:0; top:0; height:42%;
-  background:linear-gradient(180deg,var(--sky-1) 0%,var(--sky-2) 38%,var(--sky-3) 74%,var(--sky-4) 100%); }
 #city{ position:absolute; left:0; right:0; top:10%; height:32%; width:100%; display:block; }
-#wall{
-  position:absolute; left:0; right:0; top:42%; bottom:0; background-color:var(--wall-2);
-  background-image:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.20) 0 3px, rgba(0,0,0,0) 3px 104px),
-    repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 3px, rgba(0,0,0,0) 3px 52px),
-    radial-gradient(90% 70% at 4% -5%, rgba(255,206,140,.50), rgba(255,206,140,0) 65%),
-    radial-gradient(60% 40% at 96% 105%, rgba(70,110,60,.30), rgba(70,110,60,0) 70%),
-    linear-gradient(180deg, var(--wall-1) 0%, var(--wall-2) 48%, var(--wall-3) 100%);
-}
 #cap{ position:absolute; left:0; right:0; top:42%; height:16px; margin-top:-16px;
   background:linear-gradient(180deg,var(--wall-cap) 0%,#93866F 100%); box-shadow:0 6px 14px rgba(0,0,0,.45); }
 #cap::after{ content:""; position:absolute; left:0; right:0; top:0; height:3px;
@@ -135,7 +124,6 @@ button:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
 #suitTag.none{ background:rgba(255,255,255,.15); color:var(--muted); }
 #turnLine{ font-size:14.5px; font-weight:800; min-height:19px; text-align:center; color:var(--muted); padding:0 8px; }
 #turnLine.you{ color:var(--gold); }
-#bubLayer{ position:fixed; inset:0; z-index:18; pointer-events:none; }
 .bubble{
   position:fixed; transform:translate(-50%,0) scale(.8); transform-origin:top center;
   max-width:min(230px, calc(100vw - 24px)); padding:8px 12px; border-radius:14px;
@@ -460,14 +448,6 @@ table.rt td.s{ width:38px; }
 #table{ background:radial-gradient(60% 45% at 50% 48%, var(--tint,transparent), transparent 75%); transition:background .4s; }
 
 /* ce qu'a fait le joueur précédent, en clair */
-#actBar{ max-width:100%; padding:7px 14px; border-radius:12px; text-align:center;
-  background:rgba(10,8,14,.72); border:1px solid rgba(255,255,255,.16);
-  font-size:14px; font-weight:800; line-height:1.35; min-height:20px; }
-#actBar:empty{ display:none; }
-#actBar b{ color:var(--gold); }
-#actBar .r{ color:#FF8A7C; }
-#actBar.new{ animation:actNew .5s; }
-@keyframes actNew{ 0%{ transform:scale(.92); background:rgba(243,172,78,.45); } 100%{ transform:none; } }
 
 /* c'est à toi : impossible à rater */
 #turnBanner{ text-align:center; margin:0 auto 6px; width:max-content; max-width:100%;
@@ -483,3 +463,202 @@ table.rt td.s{ width:38px; }
 /* entre deux tours : qui est prêt */
 #readyInfo{ text-align:center; margin:10px 0 0; font-size:13px; color:var(--text); }
 #readyInfo b{ color:var(--gold); }
+
+
+/* ===== Étape 1 — lisibilité : tout texte posé sur une plaque sombre ===== */
+:root{ --muted:#D8CDBB; --dim:#BDB2A0; }
+#bgShade{ background:linear-gradient(180deg, rgba(10,8,16,.55) 0%, rgba(10,8,16,.28) 16%, rgba(10,8,16,.50) 36%,
+  rgba(10,8,16,.66) 58%, rgba(10,8,16,.86) 76%, rgba(10,8,16,.94) 100%); }
+#topbar{ justify-content:space-between; }
+#matchInfo{ flex:0 1 auto; background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:6px 11px; }
+#menuBtn{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); }
+#turnLine{ align-self:center; width:max-content; max-width:100%; box-sizing:border-box; padding:6px 14px;
+  border-radius:12px; background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); color:var(--text); }
+#turnLine:empty{ display:none; }
+#turnLine.you{ color:var(--gold); }
+#dirWrap{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:10px; padding:4px 10px; color:var(--text); }
+#histCol .chip{ background:rgba(12,10,16,.84); }
+#histCol .chip.f0{ opacity:1; } #histCol .chip.f1{ opacity:.9; }
+#histCol .chip.f2{ opacity:.78; } #histCol .chip.f3{ opacity:.66; }
+#handCount, #deckInfo{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:5px 9px; color:var(--text); }
+#sortBtn{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); color:var(--text); }
+
+
+/* ===== Étape 2 — adversaires en vignettes compactes ===== */
+#oppRow{ align-items:stretch; gap:6px; padding:12px 0 4px; }
+#oppRow .seat{ flex:1 1 0; min-width:0; }
+#oppRow .seat .opp{ margin-top:0; position:relative; width:100%; box-sizing:border-box;
+  background:rgba(12,10,16,.84); border:1.5px solid rgba(255,255,255,.14); border-radius:14px; }
+#oppRow .seat .face{ border-radius:50%; object-fit:cover; object-position:top center; background:#2A2336;
+  border:2px solid rgba(255,255,255,.22); max-width:none; transform:none; filter:none; opacity:1; flex:0 0 auto; }
+#oppRow .seat .aimTag{ display:none; }
+/* face à face : une bande horizontale */
+#oppRow.solo .seat .opp{ flex-direction:row; align-items:center; padding:8px 14px 8px 8px; gap:12px; }
+#oppRow.solo .seat .face{ width:62px; height:62px; }
+#oppRow.solo .seat .who{ flex:1 1 auto; }
+#oppRow.solo .seat .nm{ font-size:22px; }
+#oppRow.solo .seat .mt{ font-size:12px; }
+#oppRow.solo .seat .cnt{ font-size:30px; }
+/* à plusieurs : des vignettes côte à côte */
+#oppRow.two .seat .opp{ flex-direction:column; align-items:center; padding:13px 4px 7px; gap:3px; text-align:center; }
+#oppRow.two .seat .face{ width:52px; height:52px; }
+#oppRow[data-n="4"] .seat .face{ width:44px; height:44px; }
+#oppRow.two .seat .who{ display:flex; flex-direction:column; align-items:center; max-width:100%; }
+#oppRow.two .seat .nm{ font-size:14px; max-width:100%; }
+#oppRow.two .seat .mt{ font-size:10px; margin-top:1px; }
+#oppRow.two .seat .cnt{ font-size:21px; }
+.cntBox{ display:flex; flex-direction:column; align-items:center; line-height:1; }
+.cntBox .cnt{ font-family:'Anton',sans-serif; color:var(--gold); line-height:1; }
+.cntL{ font-size:10.5px; color:var(--muted); font-weight:700; margin-top:2px; }
+#oppRow .seat.out .opp{ opacity:.5; }
+#oppRow .seat.turn .opp{ border:2px solid var(--gold); }
+#oppRow .seat.aim .opp{ border:2px solid #E4693A; }
+#oppRow .seat.last .opp{ border:2px solid #E4574B; animation:lastPulse 1s infinite; }
+#oppRow .seat.last .cnt{ color:#FF8A7C; }
+@keyframes lastPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(228,87,75,.6); } 50%{ box-shadow:0 0 0 7px rgba(228,87,75,0); } }
+.tagS{ position:absolute; top:-10px; left:50%; transform:translateX(-50%); z-index:3; white-space:nowrap;
+  padding:3px 8px; border-radius:999px; font-size:9.5px; font-weight:800; letter-spacing:.3px; line-height:1.2; }
+.turnT{ background:var(--gold); color:#2B1B05; }
+.lastT{ background:#D23A2C; color:#fff; animation:lastBlink 1s infinite; }
+.aimT{ background:#E4693A; color:#fff; }
+@keyframes lastBlink{ 50%{ opacity:.5; } }
+
+#table{ justify-content:safe center; }
+#table.serre{ justify-content:flex-start; }
+#oppRow{ flex:0 0 auto; }      /* la rangée des adversaires ne se tasse jamais */
+
+
+/* ===== Étape 3 — la table : pioche visible à côté de la défausse ===== */
+#piles{ align-items:center; gap:22px; }
+#piles .pileWrap:first-child{ position:static; opacity:1; pointer-events:auto; transform:none; }
+#drawSlot{ width:calc(var(--pile-w) * .66); height:calc(var(--pile-h) * .66); box-shadow:none; }
+#drawSlot .backcard, .cardback{ background:url(../images/dos-carte.webp) center / cover no-repeat;
+  border:none; border-radius:7px; font-size:0; color:transparent; }
+#drawSlot .backcard{ box-shadow:3px 3px 0 -1px #0b0910, 3px 3px 0 0 rgba(212,170,90,.55),
+  6px 6px 0 -1px #0b0910, 6px 6px 0 0 rgba(212,170,90,.45), 0 10px 18px rgba(0,0,0,.5); }
+#drawCount{ right:-12px; bottom:-12px; min-width:32px; height:28px; border-radius:999px; padding:0 8px;
+  background:var(--gold); color:#2B1B05; font-family:'Anton',sans-serif; font-size:16px; border:2px solid #14101C; }
+#piles .pileLabel{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:8px; padding:3px 9px; font-size:12px; font-weight:700; color:var(--text); }
+#suitTag, #deckInfo{ display:none !important; }
+/* le symbole de la couleur demandée recouvre la carte, sans transparence */
+#suitBig{ font-size:0; }
+#discardSlot.masque > .card:last-child .pip{ visibility:hidden; }
+
+
+/* ===== Étape 4 — ta main : un seul signal, piocher plus discret, sans signes ===== */
+#drawBtn{ background:rgba(12,10,16,.84); color:var(--gold); border:1.5px solid var(--gold); box-shadow:none; }
+#drawBtn.prime{ background:linear-gradient(180deg,var(--gold),var(--gold-dk)); color:#2B1B05; border:none;
+  box-shadow:0 4px 0 rgba(0,0,0,.35); }
+.card .sign{ display:none !important; }
+
+
+
+/* ===================== LE FIL =====================
+   Un seul endroit où l'on suit ce qui se raconte. Hauteur fixe,
+   une ligne par message, jamais de retour à la ligne. */
+#fil{ --fl:19px; flex:0 0 auto; width:100%; box-sizing:border-box; padding:9px 12px; border-radius:10px;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:2px; overflow:hidden; position:relative;
+  height:calc(var(--fl) * 4 + 20px); font-size:12px; line-height:var(--fl); }
+#fil[data-lignes="2"]{ height:calc(var(--fl) * 2 + 22px); }
+#fil[data-lignes="1"]{ height:calc(var(--fl) + 22px); }
+#fil .fl{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+
+#fil .q{ margin-right:6px; }
+
+#fil .a1{ opacity:.66; }
+#fil .a2{ opacity:.44; }
+#fil .a3{ opacity:.26; }
+#fil .a0{ animation:filNew .3s ease-out; }
+@keyframes filNew{ from{ transform:translateY(6px); opacity:0; } to{ transform:none; opacity:1; } }
+
+/* ---------- QUARTIER : un mur de cité, les noms à la bombe ---------- */
+:root[data-world="quartier"] #fil{
+  color:#EDE3D2;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 20px, rgba(0,0,0,.55) 20px 22px, rgba(255,255,255,.10) 22px 23px),
+    repeating-linear-gradient(90deg, transparent 0 62px, rgba(0,0,0,.45) 62px 64px, rgba(255,255,255,.08) 64px 65px),
+    radial-gradient(120% 80% at 20% 0%, rgba(255,255,255,.06), transparent 60%),
+    linear-gradient(180deg, #554D44, #322C27);
+  border:1px solid rgba(0,0,0,.5);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.07), inset 0 -10px 18px rgba(0,0,0,.45), 0 4px 10px rgba(0,0,0,.4);
+  border-radius:4px; }
+:root[data-world="quartier"] #fil .q{
+  font-family:'Permanent Marker',cursive; color:#F2C14A; font-size:12.5px; letter-spacing:.3px;
+  text-shadow:0 0 6px rgba(242,193,74,.45); display:inline-block; transform:rotate(-1.5deg); }
+:root[data-world="quartier"] #fil .fl i{ color:#FFE6A8; }
+:root[data-world="quartier"] #fil .r{ color:#FF9A8C; }
+
+/* ---------- STUDIO : une tranche de console, LED et faders ---------- */
+:root[data-world="studio"] #fil{
+  color:#DDE6E1; font-family:'Share Tech Mono',monospace; letter-spacing:.2px;
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 1px, transparent 1px 17px),
+    linear-gradient(180deg, #23262B, #15171B);
+  border:1px solid #0A0C0E; border-radius:6px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 6px rgba(0,0,0,.7), 0 3px 10px rgba(0,0,0,.5);
+  padding-left:26px; }
+:root[data-world="studio"] #fil:before{            /* la réglette de niveau, à gauche */
+  content:''; position:absolute; left:9px; top:10px; bottom:10px; width:7px; border-radius:2px;
+  background:repeating-linear-gradient(180deg, #2CCB78 0 3px, rgba(0,0,0,.6) 3px 5px);
+  box-shadow:0 0 7px rgba(44,203,120,.5), inset 0 0 0 1px rgba(0,0,0,.6); opacity:.85; }
+:root[data-world="studio"] #fil .q{ color:#57D9A3; text-transform:uppercase; font-size:10.5px; }
+:root[data-world="studio"] #fil .a0 .q{ color:#7CFFC4; text-shadow:0 0 8px rgba(44,203,120,.8); }
+:root[data-world="studio"] #fil .fl i{ color:#CFE9DC; }
+:root[data-world="studio"] #fil .r{ color:#FF8E7E; }
+
+/* ---------- SUSHI : la carte du restaurant ---------- */
+:root[data-world="sushi"] #fil{
+  color:#2B211A; font-family:'Cormorant Garamond',Georgia,serif; font-size:13px; --fl:20px;
+  background:
+    repeating-linear-gradient(90deg, rgba(150,120,80,.05) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, #F6EEDC, #EADFC6);
+  border:1px solid #C9B490; border-left:5px double #A82D26; border-radius:3px;
+  box-shadow:0 4px 12px rgba(0,0,0,.45), inset 0 0 22px rgba(168,45,38,.06); }
+:root[data-world="sushi"] #fil .fl{ background-image:linear-gradient(to right, rgba(120,90,60,.35) 35%, transparent 0);
+  background-size:4px 1px; background-repeat:repeat-x; background-position:0 calc(100% - 1px); }
+:root[data-world="sushi"] #fil .q{
+  font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-weight:600;
+  color:#A82D26; font-size:14px; letter-spacing:.4px; }
+:root[data-world="sushi"] #fil .r{ color:#A82D26; }
+:root[data-world="sushi"] #fil b{ color:#6B4A12; }
+
+/* à plusieurs, l'étiquette se range sous le compte plutôt que de dépasser */
+#oppRow.two .seat .tagS{ position:static; transform:none; display:block; width:100%; box-sizing:border-box;
+  margin-top:4px; font-size:8px; padding:2px 2px; letter-spacing:0; }
+#oppRow.two .seat .opp{ padding-top:8px; }
+#table.serre{ justify-content:flex-start; }
+
+
+/* ---- le vol des cartes : deux faces pour le retournement ---- */
+.flyer{ transform-style:preserve-3d; will-change:transform; }
+.flyer.retourne .av, .flyer.retourne .ar{ position:absolute; inset:0; backface-visibility:hidden; }
+.flyer.retourne .ar{ transform:rotateY(180deg); }
+.flyer.retourne .ar .cardback{ width:100%; height:100%; }
+
+/* ---- le menu pause tenait sur une seule rangée d'icônes : cinq ne rentrent pas ---- */
+.iconRow{ flex-wrap:wrap; }
+.iconRow .iconBtn{ flex:1 1 44%; min-width:0; }
+
+/* ---- la carte du restaurant porte son titre ---- */
+:root[data-world="sushi"] #fil:after{
+  content:'Menu'; position:absolute; top:3px; right:10px;
+  font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-size:12px;
+  color:#A82D26; opacity:.75; letter-spacing:1px; pointer-events:none; }
+:root[data-world="sushi"] #fil{ padding-top:14px; }
+
+/* ---- les répliques passent devant : c'est ce qui fait vivre la partie ---- */
+#fil .fl i{ font-style:italic; font-weight:700; }
+#fil .a0 i{ font-size:13px; }
+
+
+/* ---- la pioche maigrit : trois épaisseurs, deux, puis une ---- */
+#drawSlot .backcard{ transition:box-shadow .3s; }
+#drawSlot[data-ep="2"] .backcard{ box-shadow:3px 3px 0 -1px #0b0910, 3px 3px 0 0 rgba(212,170,90,.55), 0 8px 16px rgba(0,0,0,.5); }
+#drawSlot[data-ep="1"] .backcard{ box-shadow:0 8px 16px rgba(0,0,0,.5); }
+#drawSlot[data-ep="0"] .backcard{ opacity:.25; box-shadow:none; }
+
+/* ---- les cartes de la main glissent au lieu de sauter ---- */
+#hand .card{ will-change:transform; }
+
+/* la carte du dessus est masquée pendant qu'une carte vole vers la défausse */
+#discardSlot.enVol > .card:last-child{ visibility:hidden; }

@@ -7,7 +7,7 @@ function audio(){
   try {
     if (!actx){
       actx = new (window.AudioContext || window.webkitAudioContext)();
-      master = actx.createGain(); master.gain.value = 0.9;
+      master = actx.createGain(); master.gain.value = 2.1;   // volume général : bien plus audible
       const comp = actx.createDynamicsCompressor();
       comp.threshold.value = -16; comp.ratio.value = 10; comp.attack.value = .003; comp.release.value = .12;
       master.connect(comp); comp.connect(actx.destination);
@@ -53,14 +53,21 @@ function noise(dur, cut0, cut1, vol, delay){
 }
 function vibe(ms){ if (SET.vibe && navigator.vibrate) { try{ navigator.vibrate(ms); }catch(e){} } }
 const SFX = {
-  play : () => { noise(.032, 2000, 500, .085); tone(300, .035, 'sine', .028, .004); },
-  draw : () => { noise(.075, 1500, 420, .055); },
+  play : () => { noise(.038, 2000, 500, .16); tone(300, .04, 'sine', .055, .004); },
+  draw : () => { noise(.085, 1500, 420, .11); },
+  /* annonce de la dernière carte : deux notes claires qui montent */
+  last : () => { tone(740, .09, 'triangle', .075); tone(988, .13, 'triangle', .065, .075); vibe(45); },
+  /* enchaînement : trois notes qui montent */
+  combo: () => { tone(523, .07, 'triangle', .06); tone(659, .07, 'triangle', .06, .06);
+                 tone(880, .16, 'triangle', .07, .12); vibe([25,40,25]); },
+  /* couleur demandée par un 8 */
+  suit : () => { tone(440, .06, 'sine', .05); tone(587, .12, 'sine', .05, .05); },
   atk  : (n) => { const k = Math.max(0, Math.min(3, ((n || 2) / 2) - 1));
-                  noise(.05, 1100 + k * 260, 300, .07);
-                  tone(84 + k * 18, .2 + k * .03, 'sine', .075); 
+                  noise(.055, 1100 + k * 260, 300, .12);
+                  tone(84 + k * 18, .2 + k * .03, 'sine', .13); 
                   tone(126 + k * 34, .14, 'triangle', .035, .01); vibe(60 + k * 28); },
-  mine : () => { tone(620, .07, 'triangle', .04); tone(830, .09, 'triangle', .033, .06); vibe(28); },
-  out  : () => { tone(660, .08, 'triangle', .045); tone(880, .12, 'triangle', .038, .07); },
-  end  : () => { tone(523, .12, 'triangle', .045); tone(659, .14, 'triangle', .04, .1); tone(784, .26, 'triangle', .04, .21); vibe([40,60,90]); },
-  no   : () => { tone(150, .07, 'triangle', .04); vibe(35); }
+  mine : () => { tone(620, .08, 'triangle', .075); tone(830, .1, 'triangle', .062, .06); vibe(28); },
+  out  : () => { tone(660, .09, 'triangle', .08); tone(880, .14, 'triangle', .07, .07); vibe(40); },
+  end  : () => { tone(523, .13, 'triangle', .08); tone(659, .15, 'triangle', .072, .1); tone(784, .28, 'triangle', .072, .21); vibe([40,60,90]); },
+  no   : () => { tone(150, .08, 'triangle', .085); vibe(35); }
 };

@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="images/icone-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@500;600;700;800&family=Permanent+Marker&family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <!-- Mode en ligne. Bloqué sur claude.ai : le jeu fonctionne quand même, seul le multijoueur est désactivé. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
 <link rel="stylesheet" href="css/style.css">
@@ -42,7 +42,7 @@
     <div id="flash"></div>
     <div id="chrono" class="hidden">30</div>
     <div id="histCol"></div>
-    <div id="actBar"></div>
+    <div id="fil" data-lignes="3"></div>
     <div id="tableTop">
     <div id="piles">
       <div class="pileWrap">
@@ -101,6 +101,7 @@
     <button class="btn" id="readyBtn">Je suis prêt</button>
     <button class="btn" id="launchBtn">Lancer la partie</button>
     <button class="btn ghost" id="closeSession">Fermer la session</button>
+    <button class="btn ghost diagBtn">⚑ Rapport</button>
     <button class="btn ghost" id="lobbyBack">Quitter le salon</button>
   </div>
 </div>
@@ -108,7 +109,7 @@
 <div id="introScreen" class="hidden"><div id="introRow"></div></div>
 <div id="netBar" class="hidden"><span id="netBarTxt"></span><button id="netBarBtn">Accueil</button></div>
 <div id="flyLayer"></div>
-<div id="bubLayer"></div>
+
 
 <div class="overlay" id="loadScreen">
   <div class="panel" style="text-align:center">
@@ -128,7 +129,6 @@
       <div><b id="sP">0</b><span>parties</span></div>
     </div>
     <div id="vsList"></div>
-    <div id="homeSession"></div>
     <button class="btn" id="goSolo">Jouer hors ligne</button>
     <button class="btn ghost" id="goCreate">Créer une partie en ligne</button>
     <button class="btn ghost" id="goJoin">Rejoindre une partie</button>
@@ -136,7 +136,9 @@
     <button class="btn ghost" id="goSet">Réglages</button>
     <button class="btn ghost" id="fsHome">Plein écran</button>
     <button class="btn ghost" id="resetStats">Remettre les compteurs à zéro</button>
+    <button class="btn ghost diagBtn">⚑ Rapport</button>
     <p class="hint" id="homeHint"></p>
+    <p class="hint" id="versionHome" style="text-align:center;margin-top:10px"></p>
   </div>
 </div>
 
@@ -195,11 +197,7 @@
       <p class="hint">À l'expiration, le joueur pioche automatiquement.</p>
     </div>
 
-    <div id="sessionBlock" style="display:none">
-      <p class="sect">Tableau de la soirée</p>
-      <div id="sessionList"></div>
-      <button class="btn ghost" id="resetSession">Remettre la soirée à zéro</button>
-    </div>
+
 
     <button class="btn" id="playBtn">Distribuer</button>
     <button class="btn ghost" id="cfgBack">Retour</button>
@@ -207,16 +205,29 @@
 </div>
 
 <!-- MENU -->
+<div class="overlay hidden" id="diagScreen">
+  <div class="panel">
+    <h2 class="endTitle">Rapport</h2>
+    <p class="sub">Copie ce texte et colle-le dans la conversation.</p>
+    <textarea id="diagTxt" readonly style="width:100%;height:230px;border-radius:12px;padding:10px;font-size:11px;
+      background:rgba(10,8,14,.8);color:var(--text);border:1px solid rgba(255,255,255,.2)"></textarea>
+    <button class="btn" id="diagCopy">Copier</button>
+    <button class="btn ghost" id="diagClose">Fermer</button>
+  </div>
+</div>
+
 <div class="overlay hidden" id="menuScreen">
   <div class="panel">
     <h2 class="endTitle">Pause</h2>
     <p class="sub">La partie t'attend.</p>
+    <p class="hint" id="versionMenu" style="text-align:center"></p>
     <button class="btn" id="resumeBtn">Reprendre</button>
     <div class="iconRow">
       <button class="iconBtn" id="menuRules"><b>?</b>Règles</button>
       <button class="iconBtn" id="menuSet"><b>⚙</b>Réglages</button>
       <button class="iconBtn" id="fsBtn"><b>⛶</b>Plein écran</button>
       <button class="iconBtn" id="restartBtn"><b>↻</b>Recommencer</button>
+      <button class="iconBtn diagBtn"><b>⚑</b>Rapport</button>
     </div>
     <button class="btn ghost" id="quitBtn">Quitter la partie</button>
   </div>
@@ -235,6 +246,7 @@
     <p class="hint" id="readyInfo"></p>
     <button class="btn" id="againBtn">Manche suivante</button>
     <button class="btn ghost" id="backBtn">Quitter</button>
+    <button class="btn ghost diagBtn">⚑ Rapport</button>
   </div>
 </div>
 
@@ -253,9 +265,8 @@
     <p class="hint" id="trashEx"></p>
     <p class="sect">Vitesse de jeu</p>
     <div class="row" id="speedRow">
-      <button class="seg" data-k="0">Lente</button>
-      <button class="seg" data-k="1">Normale</button>
-      <button class="seg" data-k="2">Rapide</button>
+      <button class="seg" data-k="0">Normale</button>
+      <button class="seg" data-k="1">Rapide</button>
     </div>
     <p class="sect">Tri de la main</p>
     <div class="row" id="sortRow">

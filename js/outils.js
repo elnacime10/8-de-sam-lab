@@ -12,8 +12,8 @@ const NOEL = { classList:{ add(){}, remove(){}, toggle(){}, contains:()=>false }
 const $ = q => document.querySelector(q) || NOEL;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const seats = () => [...Array(MATCH.n).keys()];
-const nameOf = p => MATCH.names[p] || CHARS[MATCH.chars[p]].nom;
-const faceOf = p => IMG[MATCH.chars[p]];
+const nameOf = p => SG(p).name || CHARS[SG(p).char].nom;
+const faceOf = p => IMG[SG(p).char];
 const isChain = r => r === '7' || r === '10' || r === 'V';
 const countSuit = (h, s) => h.filter(c => c.s === s).length;
 const countRank = (h, r) => h.filter(c => c.r === r).length;

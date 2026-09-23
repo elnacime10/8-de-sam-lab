@@ -26,9 +26,17 @@ function netBar(txt, info){
 }
 
 /* UN SEUL point de sortie : on ferme tout, toujours, sans condition. */
+/* Le seul endroit qui arrête le réseau et tout ce qui tourne avec. */
+function minuteriesVivantes(){
+  return [['signal de vie', pingT], ['délai de grâce', graceT], ['phase', phaseT],
+          ['chrono hôte', chronoT], ['chrono invité', guestT]]
+         .filter(x => x[1]).map(x => x[0]);
+}
 function closeNet(msg, prevenir){
+  annuleVols();
   clearInterval(pingT); pingT = null;
   clearInterval(graceT); graceT = null;
+  clearInterval(guestT); guestT = null;
   stopChrono();
   if (prevenir) conns.forEach(c => { try{ c.send({ t:'BYE', msg: msg || '' }); }catch(e){} });
   clearInterval(phaseT); phaseT = null; PHASE = null; GPHASE = null;
@@ -38,8 +46,8 @@ function closeNet(msg, prevenir){
   hostConn = null;
   if (peer){ try{ peer.destroy(); }catch(e){} peer = null; }
   MATCH.online = false; MATCH.host = false; MATCH.code = '';
-  MATCH.conn = [false,false,false,false,false];
-  NET.state = 'off'; lastSeq = 0; lastActSeen = 0; SEQ = 0;
+  MATCH.seats.forEach(s => { s.conn = false; });
+  NET.state = 'off'; lastSeq = 0; lastActSeen = 0; SEQ = 0; jrnVu = 0; midVu = null;
   ME = 0;
   netBar(msg || '', true);
   if (msg) setTimeout(() => netBar(''), 6000);
@@ -83,7 +91,15 @@ function openNet(essai){
     if (!MATCH.host){ try{ c.close(); }catch(e){} return; }
     conns.push(c);
     c.seen = Date.now();
-    c.on('open', () => seatFor(c));
+    c.on('open', () => {
+      /* on n'assoit personne avant de savoir à qui on parle */
+      c.attente = setTimeout(() => {
+        if (c.seat === undefined){
+          try{ c.send({ t:'BYE', msg:"Ton jeu est dans une version trop ancienne. Ferme-le complètement et rouvre-le." }); }catch(e){}
+          setTimeout(() => { try{ c.close(); }catch(e){} }, 300);
+        }
+      }, 4000);
+    });
     c.on('data', d => { c.seen = Date.now(); onHostData(c, d); });
     c.on('close', () => onPeerGone(c));
     c.on('error', () => onPeerGone(c));
@@ -116,9 +132,9 @@ function checkGrace(){
   if (!G || G.over) return;
   const now = Date.now();
   seats().forEach(p => {
-    if (!MATCH.human[p] || p === ME || G.in[p] === false) return;
-    if (conns.some(c => c.seat === p)) { MATCH.conn[p] = true; return; }
-    MATCH.conn[p] = false;
+    if (!SG(p).human || p === ME || G.in[p] === false) return;
+    if (conns.some(c => c.seat === p)) { SG(p).conn = true; return; }
+    SG(p).conn = false;
     if (!NET.grace) NET.grace = {};
     if (!NET.grace[p]) NET.grace[p] = now;
     else if (now - NET.grace[p] > GRACE){
@@ -134,9 +150,8 @@ function checkGrace(){
 }
 
 function openLobby(){
-  MATCH.host = true; MATCH.online = true; ME = 0;
-  MATCH.ready = [true,false,false,false,false];
-  for (let p = 1; p < MATCH.n; p++){ MATCH.human[p] = true; MATCH.ready[p] = false; }
+  nouveauMatch('hote');                      // un seul point de départ, comme hors ligne
+  for (let p = 1; p < MATCH.n; p++){ SG(p).human = true; SG(p).ready = false; }
   show('lobbyScreen');
   if (!netOK()){
     $('#netHint').textContent = "Le mode en ligne a besoin d'un hébergement. Depuis claude.ai il est bloqué.";
@@ -154,42 +169,52 @@ function seatFor(c){
     /* après le tirage au sort, l'hôte peut être à n'importe quel siège : on les parcourt tous */
     const libre = p => p !== ME && G.in[p] && !conns.some(x => x.seat === p && x !== c);
     if (tok) for (let p = 0; p < MATCH.n; p++)
-      if (MATCH.tok[p] === tok && libre(p)){ reprise = p; break; }
+      if (SG(p).tok === tok && libre(p)){ reprise = p; break; }
     if (reprise === undefined) for (let p = 0; p < MATCH.n; p++)
-      if (MATCH.human[p] && !MATCH.tok[p] && libre(p)){ reprise = p; break; }
+      if (SG(p).human && !SG(p).tok && libre(p)){ reprise = p; break; }
     if (reprise === undefined && !tok) for (let p = 0; p < MATCH.n; p++)
-      if (MATCH.human[p] && libre(p)){ reprise = p; break; }
+      if (SG(p).human && libre(p)){ reprise = p; break; }
     if (reprise === undefined){ try{ c.send({ t:'STARTED' }); c.close(); }catch(e){} return; }
     c.seat = reprise;
     if (NET.grace) delete NET.grace[reprise];
-    MATCH.conn[reprise] = true;
-    flash(nameOf(reprise) + ' est de retour');
+    SG(reprise).conn = true;
+    netBar(nameOf(reprise) + ' est de retour');
     try{ c.send({ t:'SEAT', seat:reprise, match:publicMatch() }); }catch(e){}
     broadcastState();
     return;
   }
   for (let p = 1; p < MATCH.n; p++)
-    if (MATCH.human[p] && !conns.some(x => x.seat === p && x !== c)){ c.seat = p; break; }
+    if (SG(p).human && !conns.some(x => x.seat === p && x !== c)){ c.seat = p; break; }
   if (c.seat === undefined)
     for (let p = 1; p < MATCH.n; p++)
-      if (!conns.some(x => x.seat === p && x !== c)){ MATCH.human[p] = true; c.seat = p; break; }
+      if (!conns.some(x => x.seat === p && x !== c)){ SG(p).human = true; c.seat = p; break; }
   if (c.seat === undefined){ try{ c.send({ t:'FULL' }); c.close(); }catch(e){} return; }
-  if (charTaken(MATCH.chars[c.seat]) !== c.seat){
+  if (charTaken(SG(c.seat).char) !== c.seat){
     const libre = CHAR_IDS.find(id => charTaken(id) < 0);
-    if (libre) MATCH.chars[c.seat] = libre;
+    if (libre) SG(c.seat).char = libre;
   }
-  MATCH.ready[c.seat] = false;
-  MATCH.conn[c.seat] = true;
-  MATCH.tok[c.seat] = (c.metadata && c.metadata.tok) || '';
+  SG(c.seat).ready = false;
+  SG(c.seat).conn = true;
+  SG(c.seat).tok = (c.metadata && c.metadata.tok) || '';
   try{ c.send({ t:'SEAT', seat:c.seat, match:publicMatch() }); }catch(e){}
   renderLobby(); broadcastLobby();
 }
 
+/* Ce que l'hôte publie : les sièges entiers, plus les réglages de la table. */
 function publicMatch(){
-  return { n:MATCH.n, chars:MATCH.chars.slice(), levels:MATCH.levels.slice(), human:MATCH.human.slice(),
-           names:MATCH.names.slice(), ready:MATCH.ready.slice(),
-           conn: seats().map(p => p === 0 || conns.some(c => c.seat === p)),
-           world:MATCH.world, tours:MATCH.tours, chrono:MATCH.chrono, code:MATCH.code };
+  return { n:MATCH.n, world:MATCH.world, tours:MATCH.tours, tour:MATCH.tour,
+           chrono:MATCH.chrono, code:MATCH.code,
+           seats: MATCH.seats.map((s, p) => Object.assign({}, s, {
+             tok:'',                                        /* le jeton ne sort jamais de l'hôte */
+             conn: p === ME || conns.some(c => c.seat === p)
+           })) };
+}
+/* Côté invité : on remplace ses sièges par ceux de l'hôte. */
+function appliqueMatch(m){
+  if (!m) return;
+  MATCH.n = m.n; MATCH.world = m.world; MATCH.tours = m.tours; MATCH.chrono = m.chrono; MATCH.code = m.code;
+  if (m.tour !== undefined) MATCH.tour = m.tour;
+  if (Array.isArray(m.seats)) MATCH.seats = m.seats.map(s => Object.assign(siegeNeuf('sam','moyen'), s));
 }
 function sendHost(o){ if (hostConn && hostConn.open) try{ hostConn.send(o); }catch(e){} }
 function broadcastLobby(){ conns.forEach(c => { try{ c.send({ t:'LOBBY', match:publicMatch() }); }catch(e){} }); }
@@ -198,9 +223,8 @@ function broadcastState(){
   if (!G) return;
   G.seq = ++SEQ;                    // continu sur toute la session, jamais remis à zéro
   conns.forEach(c => { try{ c.send({ t:'STATE', seat:c.seat, g:viewFor(c.seat), match:publicMatch(),
-    scores:MATCH.scores, session:MATCH.session, tour:MATCH.tour, matches:MATCH.matches,
     chrono: chronoEnd ? Math.max(0, Math.ceil((chronoEnd - Date.now()) / 1000)) : 0,
-    phase: phasePublique() }); }catch(e){} });
+    phase: texteRevanche(c.seat) }); }catch(e){} });
 }
 /* chacun ne reçoit que sa main : les autres sont masquées */
 function viewFor(seat){
@@ -208,22 +232,37 @@ function viewFor(seat){
     hands:G.hands, top:G.top, activeSuit:G.activeSuit, freeStart:G.freeStart, dir:G.dir,
     in:G.in, out:G.out, turn:G.turn, pending:G.pending, pendingWinner:G.pendingWinner,
     over:G.over, deckN:G.deck.length, hist:G.hist, moveNo:G.moveNo, winner:G.winner,
-    seq:G.seq, actNo:G.actNo, lastAct:G.lastAct, mid:G.mid
+    seq:G.seq, actNo:G.actNo, lastAct:G.lastAct, mid:G.mid,
+    jrn:(G.jrn || []).slice(-10), chain:CHAINE.slice()
   }));
-  g.hands = g.hands.map((h, p) => p === seat ? h : h.map(() => ({ r:'?', s:'?' })));
+  if (!G.over) g.hands = g.hands.map((h, p) => p === seat ? h : h.map(() => ({ r:'?', s:'?' })));
   return g;
 }
 
 function onHostData(c, d){
-  if (!d || !MATCH.host || c.seat === undefined) return;
+  if (!d || !MATCH.host) return;
+  if (d.t === 'HELLO'){
+    clearTimeout(c.attente);
+    if (d.v !== VERSION_PROTO){
+      try{ c.send({ t:'BYE', msg:'Versions différentes : l\'hôte est en ' + VERSION_PROTO + ', toi en '
+        + (d.v || 'ancienne') + '. Fermez et rouvrez le jeu tous les deux.' }); }catch(e){}
+      setTimeout(() => { try{ c.close(); }catch(e){} }, 300);
+      return;
+    }
+    c.version = d.v;
+    if (d.tok) c.metadata = Object.assign({}, c.metadata, { tok:d.tok });
+    seatFor(c);                                  /* il est des nôtres : on l'assoit */
+    return;
+  }
+  if (c.seat === undefined) return;
   if (d.t === 'PING') return;
   if (d.t === 'CHAR'){
-    if (charTaken(d.id) < 0){ MATCH.chars[c.seat] = d.id; renderLobby(); broadcastLobby(); }
+    if (charTaken(d.id) < 0){ SG(c.seat).char = d.id; renderLobby(); broadcastLobby(); }
     else try{ c.send({ t:'CHARNO' }); }catch(e){}
     return;
   }
-  if (d.t === 'NAME'){ MATCH.names[c.seat] = String(d.name || '').slice(0, 12); renderLobby(); broadcastLobby(); return; }
-  if (d.t === 'READY'){ MATCH.ready[c.seat] = !!d.v; renderLobby(); broadcastLobby(); return; }
+  if (d.t === 'NAME'){ SG(c.seat).name = String(d.name || '').slice(0, 12); renderLobby(); broadcastLobby(); return; }
+  if (d.t === 'READY'){ SG(c.seat).ready = !!d.v; renderLobby(); broadcastLobby(); return; }
   if (d.t === 'NEXT'){ if (PHASE){ PHASE.ready[c.seat] = !!d.v; phaseLastRest = -1; checkPhase(); } return; }
   if (d.t === 'MOVE' && G && !G.over && G.turn === c.seat) applyRemote(c.seat, d);
 }
@@ -233,18 +272,19 @@ function onPeerGone(c){
   try{ c.close(); }catch(e){}
   if (c.seat === undefined) return;
   const p = c.seat;
-  MATCH.conn[p] = false;
+  SG(p).conn = false;
   if (G && !G.over){
     if (!NET.grace) NET.grace = {};
     NET.grace[p] = Date.now();
-    flash(nameOf(p) + ' a perdu la connexion', true);
+    netBar(nameOf(p) + ' a perdu la connexion');
     netBar(nameOf(p) + ' est déconnecté — 30 secondes pour revenir', true);
     setTimeout(() => netBar(''), 5000);
     broadcastState();
   } else {
-    MATCH.ready[p] = false;
+    SG(p).ready = false;
     renderLobby();
     broadcastLobby();
+    if (PHASE){ phaseLastRest = -2; checkPhase(); broadcastState(); if (PHASE) netEndScreen(); }
   }
 }
 
@@ -258,7 +298,13 @@ function applyRemote(seat, d){
     if (!playable(G.hands[seat][i])) return;
     playCard(seat, i, d.suit);
   }
-  render(); broadcastState();
+  render();
+  /* le coup vient du réseau : on l'anime comme s'il était joué ici */
+  anime(G.lastAct, () => {
+    if (G.lastAct.k === 'play') (G.lastAct.r === 'A' || G.lastAct.r === '9') ? SFX.atk(G.pending ? G.pending.amount : 2) : SFX.play();
+    else SFX.draw();
+  });
+  broadcastState();
   if (!G.over && G.turn !== ME && isAI(G.turn)) runAI(); else armChrono();
 }
 
@@ -273,7 +319,11 @@ function joinGame(code){
     if (fait) return; fait = true;
     hostConn = peer.connect(code.toUpperCase(), { metadata:{ tok: monJeton() } });
     lastHostSeen = Date.now();
-    hostConn.on('open', () => { NET.state = 'lobby'; lastHostSeen = Date.now(); startPing(); $('#joinHint').textContent = 'Connecté.'; });
+    hostConn.on('open', () => {
+      NET.state = 'lobby'; lastHostSeen = Date.now(); startPing();
+      $('#joinHint').textContent = 'Connecté.';
+      sendHost({ t:'HELLO', v:VERSION_PROTO, tok:monJeton() });   /* on annonce sa version */
+    });
     hostConn.on('data', d => onGuestData(d));
     hostConn.on('close', () => { if (MATCH.online && !MATCH.host) hostLost(); });
     hostConn.on('error', () => { if (MATCH.online && !MATCH.host) hostLost(); });
@@ -297,22 +347,22 @@ function onGuestData(d){
     $('#endScreen').classList.add('hidden'); show('homeScreen'); refreshHome(); return; }
   if (d.t === 'CHARNO'){ $('#netHint').textContent = 'Personnage déjà pris.'; return; }
   if (d.t === 'SEAT'){
-    ME = d.seat; Object.assign(MATCH, d.match); MATCH.online = true; MATCH.host = false;
+    ME = d.seat; appliqueMatch(d.match); MATCH.online = true; MATCH.host = false;
     if (!d.jeu){ show('lobbyScreen'); renderLobby(); }
     return;
   }
-  if (d.t === 'LOBBY'){ Object.assign(MATCH, d.match); renderLobby(); return; }
+  if (d.t === 'LOBBY'){ appliqueMatch(d.match); renderLobby(); return; }
   if (d.t === 'STATE'){
     const g = d.g;
     if (g.seq && g.seq <= lastSeq) return;            // message en retard : on ignore
     lastSeq = g.seq || 0;
-    Object.assign(MATCH, d.match);
-    MATCH.scores = d.scores; MATCH.session = d.session; MATCH.tour = d.tour;
-    if (d.matches !== undefined) MATCH.matches = d.matches;
+    appliqueMatch(d.match);
     ME = d.seat;
     const avant = G;
     const monTour = G && G.turn === ME;
     GPHASE = d.phase || null;
+    if (Array.isArray(d.g.chain)) CHAINE = d.g.chain.slice();   /* le compteur vient de l'hôte */
+    if (g.mid && g.mid !== midVu){ midVu = g.mid; jrnVu = 0; filVide(); }   /* nouvelle manche : on repart à blanc */
     G = Object.assign({}, g, { deck:new Array(g.deckN).fill(0), discard:G ? G.discard : [],
       weak:[{},{},{},{},{}], playedRanks:{}, turnCount:0, stagnant:0, reshuffles:0, minHand:99, totalHands:0 });
     if (G.top) G.discard = [G.top];
@@ -320,7 +370,11 @@ function onGuestData(d){
     /* une nouvelle manche chasse l'écran de fin (c'était le blocage de « rejouer ») */
     if (!g.over) $('#endScreen').classList.add('hidden');
     /* les statistiques de l'invité comptent aussi, une fois par manche */
-    if (g.over && g.mid && g.mid !== countedMid){ countedMid = g.mid; noteResult(g.out[0] === ME); }
+    if (g.over && g.mid && g.mid !== countedMid && (MATCH.n === 2 || MATCH.tour >= MATCH.tours)){
+      countedMid = g.mid; noteResult(classementMatch());
+    }
+    /* le journal de l'hôte : on affiche les lignes qu'on n'a pas encore vues, dans l'ordre */
+    (g.jrn || []).forEach(e => { if (e.n > jrnVu){ jrnVu = e.n; filAjoute(e.p, e.t, e.g, e.h); } });
     sizeUp(); render();
     guestFeedback(g, monTour);
     guestChrono(d.chrono);
@@ -331,19 +385,20 @@ function onGuestData(d){
   }
 }
 
-let lastSeq = 0, lastActSeen = 0, guestT = null;
+let lastSeq = 0, lastActSeen = 0, guestT = null, jrnVu = 0, midVu = null;
 /* l'invité ne reçoit qu'un état : il en déduit ce qui vient de se passer */
 function guestFeedback(g, monTourAvant){
   const a = g.lastAct;
   if (a && a.n > lastActSeen){
     lastActSeen = a.n;
-    if (a.k === 'play'){
-      (a.r === 'A' || a.r === '9') ? SFX.atk(g.pending ? g.pending.amount : 2) : SFX.play();
-      if (a.p !== ME){
-        if (a.r === 'A' || a.r === '9') bubble(a.p, 'atk');
-        else if (G.hands[ME].length === 1) bubble(a.p, 'low');
-      }
-    } else { SFX.draw(); if (a.p !== ME && a.k === 'take') bubble(a.p, 'hit'); }
+    const son = () => {
+      if (a.k === 'play') (a.r === 'A' || a.r === '9') ? SFX.atk(g.pending ? g.pending.amount : 2) : SFX.play();
+      else SFX.draw();
+    };
+    /* le coup d'un autre joueur s'anime ici comme s'il était joué sur place */
+    if (a.p !== ME && anime(a, son)) { /* le son tombera à l'impact */ }
+    else son();
+
   }
   if (G.turn === ME && !monTourAvant && !G.over) SFX.mine();
 }
@@ -371,13 +426,13 @@ function guestChrono(n){
 function sendMove(o){ if (hostConn && hostConn.open) try{ hostConn.send(Object.assign({ t:'MOVE' }, o)); }catch(e){} }
 
 function seatState(p){
-  if (!MATCH.human[p]) return { txt:'ordinateur', cls:'bot' };
-  if (p === ME) return { txt: MATCH.ready[p] ? 'toi · prêt' : 'toi', cls: MATCH.ready[p] ? 'ok' : 'wait' };
-  const co = MATCH.host ? conns.some(c => c.seat === p) : MATCH.conn[p];
+  if (!SG(p).human) return { txt:'ordinateur', cls:'bot' };
+  if (p === ME) return { txt: SG(p).ready ? 'toi · prêt' : 'toi', cls: SG(p).ready ? 'ok' : 'wait' };
+  const co = MATCH.host ? conns.some(c => c.seat === p) : SG(p).conn;
   if (!co) return { txt:'en attente', cls:'wait' };
-  return MATCH.ready[p] ? { txt:'prêt', cls:'ok' } : { txt:'connecté', cls:'wait' };
+  return SG(p).ready ? { txt:'prêt', cls:'ok' } : { txt:'connecté', cls:'wait' };
 }
-function charTaken(id){ return MATCH.chars.findIndex((c, i) => c === id && i < MATCH.n); }
+function charTaken(id){ return champs('char').findIndex((c, i) => c === id && i < MATCH.n); }
 
 function renderLobby(){
   $('#codeVal').textContent = MATCH.code || (NET.state === 'opening' ? '…' : '----');
@@ -395,39 +450,39 @@ function renderLobby(){
       <img src="${IMG[id]}" alt=""><b>${CHARS[id].nom}</b></button>`;
   }).join('');
   f.querySelectorAll('.fbtn:not([disabled])').forEach(b => b.addEventListener('click', () => {
-    if (MATCH.host){ if (charTaken(b.dataset.id) < 0){ MATCH.chars[ME] = b.dataset.id; renderLobby(); broadcastLobby(); } }
+    if (MATCH.host){ if (charTaken(b.dataset.id) < 0){ SG(ME).char = b.dataset.id; renderLobby(); broadcastLobby(); } }
     else sendHost({ t:'CHAR', id:b.dataset.id });
   }));
-  if ($('#pseudo').value !== MATCH.names[ME]) $('#pseudo').value = MATCH.names[ME] || '';
+  if ($('#pseudo').value !== SG(ME).name) $('#pseudo').value = SG(ME).name || '';
 
   let h = '';
   for (let p = 0; p < MATCH.n; p++){
     const st = seatState(p);
-    const libre = MATCH.human[p] && p !== ME && !(MATCH.host ? conns.some(c => c.seat === p) : MATCH.conn[p]);
+    const libre = SG(p).human && p !== ME && !(MATCH.host ? conns.some(c => c.seat === p) : SG(p).conn);
     h += `<div class="seatCard"><div class="seatHead">
-      <img src="${IMG[MATCH.chars[p]]}" alt="">
-      <div><div class="sn">${nameOf(p)}</div><div class="sd">Siège ${p+1}${MATCH.human[p] ? '' : ' · ' + MATCH.levels[p]}</div></div>
-      ${MATCH.human[p] && p !== ME ? `<span class="dotc ${(MATCH.host ? conns.some(c => c.seat === p) : MATCH.conn[p]) ? 'on' : 'wait'}"></span>` : ''}
+      <img src="${IMG[SG(p).char]}" alt="">
+      <div><div class="sn">${nameOf(p)}</div><div class="sd">Siège ${p+1}${SG(p).human ? '' : ' · ' + SG(p).level}</div></div>
+      ${SG(p).human && p !== ME ? `<span class="dotc ${(MATCH.host ? conns.some(c => c.seat === p) : SG(p).conn) ? 'on' : 'wait'}"></span>` : ''}
       ${MATCH.host && p !== ME
-        ? `<span class="mini">${libre ? `<button data-bot="${p}">Mettre un ordinateur</button>` : ''}${!MATCH.human[p] ? `<button data-hum="${p}">Libérer</button>` : ''}</span>`
+        ? `<span class="mini">${libre ? `<button data-bot="${p}">Mettre un ordinateur</button>` : ''}${!SG(p).human ? `<button data-hum="${p}">Libérer</button>` : ''}</span>`
         : `<span class="st ${st.cls}">${st.txt}</span>`}
       </div></div>`;
   }
   $('#lobbySeats').innerHTML = h;
   $('#lobbySeats').querySelectorAll('[data-bot]').forEach(b => b.addEventListener('click', () => {
-    MATCH.human[+b.dataset.bot] = false; MATCH.ready[+b.dataset.bot] = true; renderLobby(); broadcastLobby();
+    SG(+b.dataset.bot).human = false; SG(+b.dataset.bot).ready = true; renderLobby(); broadcastLobby();
   }));
   $('#lobbySeats').querySelectorAll('[data-hum]').forEach(b => b.addEventListener('click', () => {
-    MATCH.human[+b.dataset.hum] = true; MATCH.ready[+b.dataset.hum] = false; renderLobby(); broadcastLobby();
+    SG(+b.dataset.hum).human = true; SG(+b.dataset.hum).ready = false; renderLobby(); broadcastLobby();
   }));
 
-  const pret = seats().every(p => !MATCH.human[p] || p === ME || MATCH.ready[p]);
+  const pret = seats().every(p => !SG(p).human || p === ME || SG(p).ready);
   $('#launchBtn').style.display = MATCH.host ? 'block' : 'none';
   $('#launchBtn').disabled = !pret || NET.state !== 'lobby';
   $('#launchBtn').textContent = pret ? 'Lancer la partie' : 'En attente des joueurs';
   $('#closeSession').style.display = MATCH.host ? 'block' : 'none';
   $('#readyBtn').style.display = MATCH.host ? 'none' : 'block';
-  $('#readyBtn').textContent = MATCH.ready[ME] ? 'Je ne suis plus prêt' : 'Je suis prêt';
+  $('#readyBtn').textContent = SG(ME).ready ? 'Je ne suis plus prêt' : 'Je suis prêt';
 }
 
 function shareLink(){
@@ -444,13 +499,13 @@ $('#copyCode').addEventListener('click', async () => {
 });
 $('#pseudo').addEventListener('change', () => {
   const v = $('#pseudo').value.trim().slice(0, 12);
-  MATCH.names[ME] = v;
+  SG(ME).name = v;
   if (MATCH.host){ renderLobby(); broadcastLobby(); } else sendHost({ t:'NAME', name:v });
 });
 $('#readyBtn').addEventListener('click', () => {
-  MATCH.ready[ME] = !MATCH.ready[ME];
+  SG(ME).ready = !SG(ME).ready;
   renderLobby();
-  sendHost({ t:'READY', v:MATCH.ready[ME] });
+  sendHost({ t:'READY', v:SG(ME).ready });
 });
 $('#netBarBtn').addEventListener('click', () => {
   closeNet('', MATCH.host); G = null; netBar(''); show('homeScreen'); refreshHome();
@@ -468,7 +523,7 @@ $('#launchBtn').addEventListener('click', () => {
   shuffleSeats();
   conns.forEach(c => { try{ c.send({ t:'SEAT', seat:c.seat, match:publicMatch() }); }catch(e){} });
   $('#lobbyScreen').classList.add('hidden');
-  MATCH.tour = 1; MATCH.scores = [0,0,0,0,0];
+  MATCH.tour = 1; MATCH.seats.forEach(s => s.score = 0);
   startManche();
 });
 
@@ -489,7 +544,7 @@ function stopChrono(){
 function armChrono(){
   stopChrono();
   if (!MATCH.online || !MATCH.host){ return; }
-  if (!MATCH.chrono || !G || G.over || !MATCH.human[G.turn]){
+  if (!MATCH.chrono || !G || G.over || !SG(G.turn).human){
     broadcastState();                         // on annonce aussi l'absence de chrono
     return;
   }
@@ -515,7 +570,7 @@ function armChrono(){
     if (reste <= 0){
       const p = G.turn;
       stopChrono();
-      flash(nameOf(p) + ' : temps écoulé, pioche', true);
+      netBar(nameOf(p) + ' : temps écoulé');
       G.pending ? takeHit(p) : drawFree(p);
       render(); broadcastState();
       if (!G.over && isAI(G.turn)) runAI(); else armChrono();
@@ -530,8 +585,9 @@ function armChrono(){
    (tour suivant) ou laissé de côté (revanche). L'hôte décide seul
    de la fin : s'il refuse la revanche, la session se ferme.
    ============================================================ */
+const VERSION_PROTO = '2.0';      /* ce numéro vit dans reseau.js : il décrit CE fichier */
 let PHASE = null, GPHASE = null, phaseT = null, phaseLastRest = -1, countedMid = null;
-const PHASE_MS = 60000;
+const TOUR_MS = 6000;      // pause entre deux tours, le temps de voir le classement
 
 function monJeton(){
   try {
@@ -540,32 +596,57 @@ function monJeton(){
     return t;
   } catch(e){ return ''; }
 }
-function phasePublique(){
-  if (!PHASE) return null;
-  return { k:PHASE.kind, ready:Object.assign({}, PHASE.ready), rest:Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000)) };
+/* L'hôte calcule ce que CHAQUE joueur doit lire. L'invité ne décide de rien :
+   il reçoit un texte de bouton et une ligne d'information, et il les affiche. */
+function texteRevanche(seat){
+  if (!PHASE || !G || !G.over) return null;
+  const hs = seats().filter(p => SG(p).human && !SG(p).dq
+                                && (p === ME || conns.some(c => c.seat === p)));
+  const pret = p => !!PHASE.ready[p];
+  const moi = pret(seat);
+  if (PHASE.kind === 'tour'){
+    const rest = Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000));
+    return { k:'tour', actif:false, ready:false, btn:'Tour suivant dans ' + rest + ' s', info:'' };
+  }
+  const n = hs.filter(pret).length;
+  const attendus = hs.filter(p => !pret(p) && p !== seat).length;
+  return { k:'revanche', actif:true, ready:moi,
+    btn: moi ? (attendus ? 'Revanche acceptée ✓ — en attente' : 'Revanche acceptée ✓') : 'Revanche !',
+    info: '<b>' + n + '/' + hs.length + '</b> partants<br>'
+        + hs.map(p => (pret(p) ? '✓ ' : '… ') + (p === seat ? 'Toi' : nameOf(p))).join('  ·  ') };
 }
 function phaseKind(){
   if (MATCH.n <= 2) return 'revanche';
-  const vivants = seats().filter(p => !MATCH.dq[p]);
-  const top = Math.max(...vivants.map(p => MATCH.scores[p]));
-  const egalite = vivants.filter(p => MATCH.scores[p] === top).length > 1;
+  const vivants = seats().filter(p => !SG(p).dq);
+  const top = Math.max(...vivants.map(p => SG(p).score));
+  const egalite = vivants.filter(p => SG(p).score === top).length > 1;
   return (MATCH.tour < MATCH.tours || egalite) ? 'tour' : 'revanche';
 }
 function startPhase(kind){
-  PHASE = { kind, ready:{}, fin:Date.now() + PHASE_MS };
+  /* entre deux tours : on enchaîne tout seul. Revanche : pas de minuteur, on attend les réponses. */
+  PHASE = { kind, ready:{}, fin: kind === 'tour' ? Date.now() + TOUR_MS : Infinity };
   phaseLastRest = -1;
   clearInterval(phaseT); phaseT = setInterval(checkPhase, 500);
   checkPhase();
 }
 function humainsPresents(){
-  return seats().filter(p => MATCH.human[p] && !MATCH.dq[p] && (p === ME || conns.some(c => c.seat === p)));
+  return seats().filter(p => SG(p).human && !SG(p).dq && (p === ME || conns.some(c => c.seat === p)));
 }
+function ordisRestants(){ return seats().filter(p => !SG(p).human && !SG(p).dq).length; }
 function checkPhase(){
   if (!PHASE) return;
-  const presents = humainsPresents();
-  const tous = presents.length > 0 && presents.every(p => PHASE.ready[p]);
-  if (tous || Date.now() >= PHASE.fin){ finishPhase(); return; }
-  const rest = Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000));
+  if (PHASE.kind === 'tour'){
+    if (Date.now() >= PHASE.fin){ finishPhase(); return; }
+  } else {
+    const presents = humainsPresents();
+    /* revanche : il faut au moins deux joueurs, ordinateurs compris */
+    if (presents.length + ordisRestants() < 2){
+      PHASE = null; clearInterval(phaseT); phaseT = null;
+      return versAccueil("La revanche n'est plus possible : l'autre joueur est parti.");
+    }
+    if (presents.every(p => PHASE.ready[p])){ finishPhase(); return; }
+  }
+  const rest = PHASE.fin === Infinity ? 0 : Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000));
   if (rest !== phaseLastRest){
     phaseLastRest = rest;
     broadcastState();
@@ -583,19 +664,13 @@ function dropSeat(p, msg){
 function compactSeats(garder){
   const garde = seats().filter(garder);
   const vers = {}; garde.forEach((anc, nouv) => { vers[anc] = nouv; });
-  const serre = (tab, defaut) => { const o = garde.map(p => tab[p]); while (o.length < 5) o.push(defaut); return o; };
-  const pris = garde.map(p => MATCH.chars[p]);
-  MATCH.chars   = pris.concat(CHAR_IDS.filter(c => !pris.includes(c))).slice(0, 5);
-  MATCH.levels  = serre(MATCH.levels, 'moyen');
-  MATCH.human   = serre(MATCH.human, false);
-  MATCH.names   = serre(MATCH.names, '');
-  MATCH.session = serre(MATCH.session, 0);
-  MATCH.tok     = serre(MATCH.tok, '');
-  MATCH.ready   = garde.map(() => true).concat([false,false,false,false,false]).slice(0, 5);
-  MATCH.dq      = [false,false,false,false,false];
+  const restants = MATCH.seats.filter((s, p) => !garde.includes(p));
+  MATCH.seats = garde.map(p => MATCH.seats[p]).concat(restants).slice(0, 5);
   MATCH.n = garde.length;
   ME = vers[ME];
   conns.forEach(c => { c.seat = vers[c.seat]; });
+  MATCH.seats.forEach((s, p) => { s.dq = false; if (p < MATCH.n) s.ready = true; });
+  verifieSieges();
 }
 function versAccueil(msg){
   closeNet(msg, true); G = null;
@@ -604,23 +679,15 @@ function versAccueil(msg){
 function finishPhase(){
   clearInterval(phaseT); phaseT = null;
   const ph = PHASE; PHASE = null; phaseLastRest = -1;
-  const humains = seats().filter(p => MATCH.human[p] && !MATCH.dq[p]);
+  const humains = seats().filter(p => SG(p).human && !SG(p).dq);
   const absents = humains.filter(p => !ph.ready[p]);
   $('#endScreen').classList.add('hidden');
-  if (ph.kind === 'tour'){
-    absents.forEach(p => {
-      MATCH.dq[p] = true;                               /* classé dernier jusqu'à la fin du match */
-      if (p !== ME) dropSeat(p, "Disqualifié : tu n'étais pas prêt pour le tour suivant.");
-    });
-    if (activeN() < 2) return versAccueil('Plus assez de joueurs pour continuer.');
-    nextStep();
-    return;
-  }
+  if (ph.kind === 'tour'){ nextStep(); return; }
   if (!ph.ready[ME]) return versAccueil('Session fermée : pas de revanche.');
   absents.forEach(p => dropSeat(p, 'La revanche se joue sans toi.'));
-  compactSeats(p => !MATCH.dq[p] && (!MATCH.human[p] || !absents.includes(p)));
+  compactSeats(p => !SG(p).dq && (!SG(p).human || !absents.includes(p)));
   if (MATCH.n < 2) return versAccueil('Personne pour la revanche.');
-  MATCH.tour = 1; MATCH.scores = [0,0,0,0,0];
+  MATCH.tour = 1; MATCH.seats.forEach(s => s.score = 0);
   conns.forEach(c => { try{ c.send({ t:'SEAT', seat:c.seat, match:publicMatch(), jeu:true }); }catch(e){} });
   startManche();
 }
@@ -628,34 +695,33 @@ function finishPhase(){
 /* l'écran de fin, en ligne : bouton de prêt, compte à rebours, qui est prêt */
 function netEndScreen(){
   if (MATCH.host && !PHASE && G && G.over){ startPhase(phaseKind()); return; }
-  const ph = MATCH.host ? phasePublique() : GPHASE;
+  const ph = MATCH.host ? texteRevanche(ME) : GPHASE;
   const btn = $('#againBtn'), info = $('#readyInfo');
+  if (!btn) return;
   if (!ph){
     btn.disabled = true; btn.style.opacity = '.35';
-    btn.textContent = "En attente de l'hôte…"; info.innerHTML = ''; return;
+    btn.textContent = "En attente de l'hôte…";
+    if (info) info.innerHTML = '';
+    return;
   }
-  const moi = !!ph.ready[ME];
-  btn.disabled = false; btn.style.opacity = '1';
-  btn.textContent = ph.k === 'tour'
-    ? (moi ? 'Prêt ✓ (toucher pour annuler)' : 'Prêt pour le tour suivant')
-    : (moi ? 'Revanche acceptée ✓' : 'Revanche !');
-  const hs = seats().filter(p => MATCH.human[p] && !MATCH.dq[p]);
-  const n = hs.filter(p => ph.ready[p]).length;
-  info.innerHTML = '<b>' + n + '/' + hs.length + '</b> ' + (ph.k === 'tour' ? 'prêts' : 'partants')
-    + ' · <b>' + ph.rest + ' s</b><br>'
-    + hs.map(p => (ph.ready[p] ? '✓ ' : '… ') + (p === ME ? 'Toi' : nameOf(p))).join('  ·  ');
+  btn.textContent = ph.btn;                 /* le texte d'abord : rien ne peut le laisser périmé */
+  btn.disabled = !ph.actif;
+  btn.style.opacity = ph.actif ? '1' : '.5';
+  if (info) info.innerHTML = ph.info || '';
 }
 function netReadyClick(){
   if (MATCH.host){
-    if (!PHASE) return;
+    if (!PHASE || PHASE.kind === 'tour') return;
+    
     PHASE.ready[ME] = !PHASE.ready[ME];
     phaseLastRest = -1; checkPhase();
     if (PHASE) netEndScreen();
     return;
   }
-  if (!GPHASE) return;
-  const v = !GPHASE.ready[ME];
-  GPHASE.ready[ME] = v;
+  if (!GPHASE || !GPHASE.actif) return;
+  const v = !GPHASE.ready;
+  GPHASE.ready = v;                          /* affichage immédiat, l'hôte confirmera */
+  GPHASE.btn = v ? 'Revanche acceptée ✓ — en attente' : 'Revanche !';
   sendHost({ t:'NEXT', v });
   netEndScreen();
 }

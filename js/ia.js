@@ -116,7 +116,7 @@ function bestSuit(hand, exclude, lv){
 }
 
 function aiDecide(p){
-  const lv = MATCH.levels[p] || 'moyen';
+  const lv = SG(p).level || 'moyen';
   const hand = G.hands[p];
   const foes = seats().filter(q => q !== p && G.in[q]);
   const mine = foes.length ? Math.min(...foes.map(q => G.hands[q].length)) : 99;
@@ -161,12 +161,14 @@ function aiDecide(p){
   return { action:'play', idx:best.i, suit };
 }
 
+let GEN_IA = 0;                 /* toute boucle d'une génération périmée s'arrête d'elle-même */
 async function runAI(){
   if (busy) return;
+  const gen = ++GEN_IA;
   busy = true; render();
   let guard = 0;
   let wait = S(CONFIG.aiThinkMs);
-  while (!G.over && G.turn !== ME && isAI(G.turn) && guard++ < 400){
+  while (gen === GEN_IA && !G.over && G.turn !== ME && isAI(G.turn) && guard++ < 400){
     const p = G.turn;
     const fast = !G.in[ME];
     if (fast && !skipAll) wait = CONFIG.fastMs;
@@ -179,18 +181,17 @@ async function runAI(){
     if (d.action === 'take'){
       const n0 = G.hands[p].length;
       takeHit(p);
-      if (!skipAll){ bubble(p, 'hit'); await flyCards(G.hands[p].slice(n0), stack, false); }
+      if (!skipAll){ await flyCards(G.hands[p].slice(n0), stack, false); }
     } else if (d.action === 'draw'){
       const n0 = G.hands[p].length;
       drawFree(p);
       if (!skipAll) await flyCards(G.hands[p].slice(n0), stack, false);
     } else {
       const c = G.hands[p][d.idx];
-      if (!skipAll){ (c.r === 'A' || c.r === '9') ? SFX.atk(G.pending ? G.pending.amount : 2) : SFX.play(); await fly(stack, $('#discardSlot'), cardHTML(c), true); }
+      if (!skipAll) await fly(stack, $('#discardSlot'), cardHTML(c), false,
+        () => (c.r === 'A' || c.r === '9') ? SFX.atk(G.pending ? G.pending.amount : 2) : SFX.play());
       playCard(p, d.idx, d.suit);
       if (!skipAll){
-        if (c.r === 'A' || c.r === '9') bubble(p, 'atk');
-        else if (G.hands[ME].length === 1 && G.in[ME]) bubble(p, 'low');
       }
     }
     render();
@@ -198,6 +199,7 @@ async function runAI(){
     if (!skipAll) await sleep(fast ? 60 : S(CONFIG.settleMs));
     wait = fast ? CONFIG.fastMs : S(CONFIG.aiChainMs);
   }
+  if (gen !== GEN_IA) return;    /* une boucle plus récente a pris la main */
   busy = false;
   render();
   if (MATCH.online && MATCH.host) broadcastState();

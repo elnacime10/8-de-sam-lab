@@ -1,6 +1,8 @@
-/* Le 8 de SAM — cache hors connexion.
-   Change VERSION à chaque mise à jour pour forcer le rechargement. */
-const VERSION = 'sam8-v4';
+/* Le 8 de SAM — mémoire hors connexion.
+   Règle : on va TOUJOURS chercher la version en ligne d'abord. La mémoire ne sert
+   que si le réseau ne répond pas. Les mises à jour arrivent donc toutes seules.
+   Change VERSION à chaque livraison. */
+const VERSION = 'sam8-2.2.1';
 const FICHIERS = [
   "./",
   "./index.html",
@@ -18,6 +20,7 @@ const FICHIERS = [
   "./js/profils.js",
   "./js/reseau.js",
   "./js/son.js",
+  "./images/dos-carte.webp",
   "./images/hamza.webp",
   "./images/icone-192.png",
   "./images/icone-512.png",
@@ -29,24 +32,40 @@ const FICHIERS = [
   "./images/sushi.webp",
   "./images/yuns.webp"
 ];
+const ATTENTE_MS = 4000;          /* réseau trop lent : on sert la mémoire, et on met à jour derrière */
 
 self.addEventListener('install', e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FICHIERS)).catch(() => {}));
+  e.waitUntil(caches.open(VERSION)
+    .then(c => c.addAll(FICHIERS.map(u => new Request(u, { cache:'reload' }))))
+    .catch(() => {}));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks =>
     Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))
   ).then(() => self.clients.claim()));
 });
+
+/* GitHub demande de garder les fichiers 10 minutes : « no-cache » force une
+   vérification à chaque fois (réponse très courte si rien n'a changé). */
+function frais(req){
+  return req.mode === 'navigate' ? new Request(req.url, { cache:'no-cache' })
+                                 : new Request(req, { cache:'no-cache' });
+}
 self.addEventListener('fetch', e => {
-  const u = new URL(e.request.url);
-  if (u.origin !== location.origin) return;            /* réseau du multijoueur : on ne touche pas */
-  e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).then(rep => {
-      const copie = rep.clone();
-      caches.open(VERSION).then(c => c.put(e.request, copie)).catch(() => {});
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const u = new URL(req.url);
+  if (u.origin !== location.origin) return;            /* multijoueur et polices : on ne touche pas */
+  e.respondWith((async () => {
+    const reseau = fetch(frais(req)).then(async rep => {
+      if (rep && rep.ok){ const c = await caches.open(VERSION); c.put(req, rep.clone()).catch(() => {}); }
       return rep;
-    }).catch(() => caches.match('./index.html')))
-  );
+    });
+    const memoire = await caches.match(req, { ignoreSearch:true })
+                 || (req.mode === 'navigate' ? await caches.match('./index.html') : undefined);
+    if (!memoire) return reseau.catch(() => Response.error());
+    const lent = new Promise(res => setTimeout(() => res(memoire), ATTENTE_MS));
+    return Promise.race([reseau.catch(() => memoire), lent]);
+  })());
 });

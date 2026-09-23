@@ -1,12 +1,19 @@
-LE 8 DE SAM — version complète à jour
+LE 8 DE SAM — version 2.1 (le fil et le rythme)
 
-Ce dossier contient TOUT le jeu. Il remplace entièrement ce qui est sur le dépôt.
+CE QUE CONTIENT CETTE ARCHIVE
+  Tout le jeu. Elle remplace entièrement ce qui est sur le dépôt.
 
-  1. Extrais l'archive (clic droit > Extraire tout).
-  2. Ouvre le dossier "8-de-sam-complet".
-  3. Sélectionne tout son contenu (Ctrl+A).
-  4. Sur GitHub : Add file > Upload files, glisse la sélection à la souris.
-  5. Vérifie en bas : tu dois lire js/moteur.js, data/personnages.js, css/style.css.
-  6. Commit changes.
+DÉPÔT
+  1. Extraire l'archive (clic droit > Extraire tout).
+  2. Ouvrir le dossier obtenu, sélectionner TOUT son contenu (Ctrl+A).
+  3. GitHub : Add file > Upload files, glisser la sélection À LA SOURIS.
+  4. Vérifier en bas : js/reseau.js, data/personnages.js, css/style.css.
+  5. Commit changes. Puis attendre la coche verte dans l'onglet Actions.
 
-Les fichiers de même nom sont remplacés, les autres restent : c'est normal.
+IMPORTANT
+  Le format des messages entre joueurs a changé : TOUT LE MONDE doit
+  être en 2.0 pour jouer ensemble. Un joueur resté en ancienne version
+  est désormais refusé avec un message clair, au lieu d'entrer dans une
+  partie où il ne comprend que la moitié de ce qui se passe.
+
+  Version affichée en bas de l accueil : 2.1
