@@ -173,10 +173,19 @@ function refreshSetup(){
   $('#seatsBlock').style.display = MATCH.online ? 'none' : 'block';
 }
 
+const ECRANS = ['homeScreen','onlineScreen','profilScreen','joinScreen','startScreen','lobbyScreen'];
 function show(id){
   $('#loadScreen').classList.add('hidden');
-  ['homeScreen','joinScreen','startScreen','lobbyScreen'].forEach(x =>
-    $('#'+x).classList.toggle('hidden', x !== id));
+  ECRANS.forEach(x => $('#'+x).classList.toggle('hidden', x !== id));
+  const col = $('#'+id) && $('#'+id).querySelector('.colonne');
+  if (col) col.scrollTop = 0;
+}
+/* l'image du profil, sur l'accueil comme ailleurs */
+function avatarDans(el){
+  if (!el) return;
+  const src = avatarProfil();
+  if (src){ el.style.backgroundImage = 'url(' + src + ')'; el.style.background = ''; el.style.backgroundImage = 'url(' + src + ')'; el.textContent = ''; }
+  else { el.style.backgroundImage = 'none'; el.style.background = PROFIL.couleur; el.textContent = initiales(PROFIL.nom); }
 }
 
 $('#resetStats').addEventListener('click', () => {
@@ -185,14 +194,16 @@ $('#resetStats').addEventListener('click', () => {
   $('#homeHint').textContent = 'Compteurs remis à zéro.';
 });
 $('#goSolo').addEventListener('click', () => { MATCH.online = false; refreshSetup(); show('startScreen'); });
-$('#goCreate').addEventListener('click', () => {
-  if (!netOK()){ $('#homeHint').textContent = "Le mode en ligne demande d'héberger le fichier (GitHub Pages, Netlify). Depuis claude.ai il est bloqué."; return; }
-  MATCH.online = true; MATCH.host = true; refreshSetup(); show('startScreen');
+$('#goOnline').addEventListener('click', () => {
+  if (!netOK()){ $('#homeHint').textContent = "Le mode en ligne demande que le jeu soit hébergé (GitHub Pages)."; return; }
+  show('onlineScreen');
 });
-$('#goJoin').addEventListener('click', () => {
-  if (!netOK()){ $('#homeHint').textContent = "Le mode en ligne demande d'héberger le fichier (GitHub Pages, Netlify). Depuis claude.ai il est bloqué."; return; }
-  show('joinScreen');
-});
+$('#goCreate').addEventListener('click', () => { MATCH.online = true; MATCH.host = true; refreshSetup(); show('startScreen'); });
+$('#goJoin').addEventListener('click', () => show('joinScreen'));
+$('#onlineBack').addEventListener('click', () => show('homeScreen'));
+$('#onlineSet').addEventListener('click', () => openSet('onlineScreen'));
+$('#goStats').addEventListener('click', () => { refreshProfil(); show('profilScreen'); });
+$('#goProfil').addEventListener('click', () => { refreshProfil(); show('profilScreen'); });
 $('#goRules').addEventListener('click', () => $('#rulesScreen').classList.remove('hidden'));
 $('#goSet').addEventListener('click', () => openSet('homeScreen'));
 $('#fsHome').addEventListener('click', fsToggle);
@@ -200,7 +211,7 @@ $('#fsBtn').addEventListener('click', () => { $('#menuScreen').classList.add('hi
 document.addEventListener('fullscreenchange', () => { fsLabel(); sizeUp(); if (G) render(); });
 document.addEventListener('webkitfullscreenchange', () => { fsLabel(); sizeUp(); if (G) render(); });
 $('#cfgBack').addEventListener('click', () => show('homeScreen'));
-$('#joinBack').addEventListener('click', () => show('homeScreen'));
+$('#joinBack').addEventListener('click', () => show('onlineScreen'));
 $('#joinGo').addEventListener('click', () => {
   const c = $('#joinCode').value.trim().toUpperCase();
   if (!c){ $('#joinHint').textContent = 'Entre un code.'; return; }
@@ -225,9 +236,6 @@ document.querySelectorAll('#toursRow .seg').forEach(b => b.addEventListener('cli
 document.querySelectorAll('#chronoRow .seg').forEach(b => b.addEventListener('click', () => {
   MATCH.chrono = +b.dataset.c; refreshSetup();
 }));
-$('#resetSessionSupprime').addEventListener('click', () => {
-  refreshSetup();
-});
 
 $('#playBtn').addEventListener('click', () => {
   if (MATCH.online){ openLobby(); return; }
@@ -461,3 +469,55 @@ function nextStep(){
   }
   startManche();
 }
+
+
+/* ---------- écran profil ---------- */
+function refreshProfil(){
+  avatarDans($('#profAvatar'));
+  $('#profNomVu').textContent = PROFIL.nom;
+  $('#profNom').value = PROFIL.nom;
+  $('#profVD').textContent = STATS.w + ' V · ' + STATS.l + ' D';
+  const box = $('#profAvatars');
+  box.innerHTML = CHAR_IDS.map(id =>
+      `<button class="av${PROFIL.avatar === id ? ' on' : ''}" data-av="${id}" style="background-image:url(${IMG[id]})"></button>`).join('')
+    + `<button class="av init${PROFIL.avatar === 'initiales' ? ' on' : ''}" data-av="initiales" style="background:${PROFIL.couleur}">${initiales(PROFIL.nom)}</button>`
+    + (PROFIL.photo ? `<button class="av${PROFIL.avatar === 'photo' ? ' on' : ''}" data-av="photo" style="background-image:url(${PROFIL.photo})"></button>` : '');
+  box.querySelectorAll('.av').forEach(b => b.addEventListener('click', () => {
+    PROFIL.avatar = b.dataset.av; saveProfil(); refreshProfil(); refreshHome();
+  }));
+  $('#profStats').innerHTML =
+    `<div><b>${STATS.w}</b><span>Victoires</span></div>
+     <div><b>${STATS.l}</b><span>Défaites</span></div>
+     <div><b>${STATS.p}</b><span>Parties</span></div>`;
+  $('#profCode').value = codeProfil();
+}
+$('#profNom').addEventListener('input', () => {
+  PROFIL.nom = $('#profNom').value.slice(0, 14) || 'Joueur';
+  saveProfil(); $('#profNomVu').textContent = PROFIL.nom; refreshHome();
+});
+$('#profPhoto').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const img = new Image(), lec = new FileReader();
+  lec.onload = () => { img.onload = () => {
+    /* on réduit la photo : sinon la mémoire du navigateur sature */
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const ct = c.getContext('2d'), k = Math.min(img.width, img.height);
+    ct.drawImage(img, (img.width - k) / 2, (img.height - k) / 2, k, k, 0, 0, 256, 256);
+    PROFIL.photo = c.toDataURL('image/jpeg', 0.82); PROFIL.avatar = 'photo';
+    saveProfil(); refreshProfil(); refreshHome();
+  }; img.src = lec.result; };
+  lec.readAsDataURL(f);
+});
+$('#profCopier').addEventListener('click', async () => {
+  const t = $('#profCode'); t.select();
+  try { await navigator.clipboard.writeText(t.value); } catch(e){ try { document.execCommand('copy'); } catch(e2){} }
+  flash('Code copié', true);
+});
+$('#profColler').addEventListener('click', async () => {
+  let code = '';
+  try { code = await navigator.clipboard.readText(); } catch(e){}
+  if (!code) code = prompt('Colle ton code de sauvegarde :') || '';
+  if (importeProfil(code)){ refreshProfil(); refreshHome(); flash('Profil restauré', true); }
+  else flash('Code invalide', true);
+});
+$('#profBack').addEventListener('click', () => show('homeScreen'));

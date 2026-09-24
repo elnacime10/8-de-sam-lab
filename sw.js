@@ -2,7 +2,7 @@
    Règle : on va TOUJOURS chercher la version en ligne d'abord. La mémoire ne sert
    que si le réseau ne répond pas. Les mises à jour arrivent donc toutes seules.
    Change VERSION à chaque livraison. */
-const VERSION = 'sam8-2.2.1';
+const VERSION = 'sam8-2.3';
 const FICHIERS = [
   "./",
   "./index.html",
@@ -20,17 +20,20 @@ const FICHIERS = [
   "./js/profils.js",
   "./js/reseau.js",
   "./js/son.js",
-  "./images/dos-carte.webp",
-  "./images/hamza.webp",
-  "./images/icone-192.png",
-  "./images/icone-512.png",
-  "./images/mehmet.webp",
-  "./images/nacime.webp",
-  "./images/quartier.webp",
-  "./images/sam.webp",
-  "./images/studio.webp",
-  "./images/sushi.webp",
-  "./images/yuns.webp"
+  "./images/decors/quartier.webp",
+  "./images/decors/studio.webp",
+  "./images/decors/sushi.webp",
+  "./images/fonds/fond-accueil.webp",
+  "./images/fonds/fond-en-ligne.webp",
+  "./images/fonds/fond-solo.webp",
+  "./images/interface/dos-carte.webp",
+  "./images/interface/icone-192.png",
+  "./images/interface/icone-512.png",
+  "./images/personnages/hamza.webp",
+  "./images/personnages/mehmet.webp",
+  "./images/personnages/nacime.webp",
+  "./images/personnages/sam.webp",
+  "./images/personnages/yuns.webp"
 ];
 const ATTENTE_MS = 4000;          /* réseau trop lent : on sert la mémoire, et on met à jour derrière */
 

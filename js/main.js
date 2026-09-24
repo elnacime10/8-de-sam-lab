@@ -108,12 +108,13 @@ preload().then(() => {
   }
 })();
 sortMode = SET.sort;
+chargeProfil();
 bornerVitesse(); speedIdx = SET.speed;
 refreshSet();
 refreshSetup();
 
 /* ---- Numéro de version : sur l'accueil et dans la pause ---- */
-const VERSION_JEU = '2.2.1';
+const VERSION_JEU = '2.3';
 $('#versionHome').textContent = 'Version ' + VERSION_JEU;
 $('#versionMenu').textContent = 'Version ' + VERSION_JEU;
 

@@ -1,3 +1,45 @@
+/* ============================================================
+   LE PROFIL : qui tu es. Il te suit d'une partie à l'autre.
+   Un profil par défaut existe dès la première ouverture.
+   ============================================================ */
+const PROFIL = { nom:'Joueur', avatar:'nacime', couleur:'#8A4FA8', photo:'' };
+
+function chargeProfil(){
+  try { Object.assign(PROFIL, JSON.parse(localStorage.getItem('sam8_profil')) || {}); } catch(e){}
+  if (!PROFIL.nom) PROFIL.nom = 'Joueur';
+}
+function saveProfil(){ try { localStorage.setItem('sam8_profil', JSON.stringify(PROFIL)); } catch(e){} }
+function initiales(nom){
+  const m = (nom || '').trim().split(/\s+/).filter(Boolean);
+  return ((m[0] || 'J')[0] + (m[1] ? m[1][0] : '')).toUpperCase();
+}
+/* l'image du profil : un personnage, une photo, ou des initiales */
+function avatarProfil(){
+  if (PROFIL.avatar === 'photo' && PROFIL.photo) return PROFIL.photo;
+  if (IMG[PROFIL.avatar]) return IMG[PROFIL.avatar];
+  return '';
+}
+/* le code de sauvegarde : ton profil et tes compteurs, en une suite de caractères */
+function codeProfil(){
+  try {
+    const paquet = { p:PROFIL, s:{ w:STATS.w, l:STATS.l, p:STATS.p, podium:STATS.podium || 0, vs:STATS.vs } };
+    return 'SAM8-' + btoa(unescape(encodeURIComponent(JSON.stringify(paquet)))).replace(/=+$/, '');
+  } catch(e){ return ''; }
+}
+function importeProfil(code){
+  try {
+    const brut = String(code || '').trim().replace(/^SAM8-/, '');
+    const paquet = JSON.parse(decodeURIComponent(escape(atob(brut))));
+    if (!paquet || !paquet.p || !paquet.p.nom) return false;
+    Object.assign(PROFIL, paquet.p); saveProfil();
+    if (paquet.s){ Object.assign(STATS, paquet.s); saveStats(); }
+    return true;
+  } catch(e){ return false; }
+}
+
+/* Le 8 de SAM — js/profils.js
+   Ce qui appartient au joueur : statistiques, configuration mémorisée. */
+
 /* Le 8 de SAM — js/profils.js
    Ce qui appartient au joueur : statistiques, configuration mémorisée. */
 
@@ -33,12 +75,9 @@ function refreshHome(){
   $('#sW').textContent = STATS.w;
   $('#sL').textContent = STATS.l;
   $('#sP').textContent = STATS.p;
-  const ids = CHAR_IDS.filter(id => STATS.vs[id]);
-  $('#vsList').innerHTML = ids.map(id => {
-    const v = STATS.vs[id];
-    return `<div class="vsRow"><img src="${IMG[id]}" alt=""><span class="n">${CHARS[id].nom}</span>
-      <span class="s">${v.w} – ${v.l}</span></div>`;
-  }).join('');
+  if (typeof avatarDans === 'function') avatarDans($('#homeAvatar'));
+  $('#homeNom').textContent = PROFIL.nom;
+  $('#homeVD').textContent = STATS.w + ' V · ' + STATS.l + ' D';
 }
 
 function saveMatch(){

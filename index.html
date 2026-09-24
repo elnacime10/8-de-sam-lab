@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="images/icone-192.png">
-<link rel="apple-touch-icon" href="images/icone-192.png">
+<link rel="icon" href="images/interface/icone-192.png">
+<link rel="apple-touch-icon" href="images/interface/icone-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@500;600;700;800&family=Permanent+Marker&family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -119,26 +119,94 @@
   </div>
 </div>
 
-<div class="overlay hidden" id="homeScreen">
-  <div class="panel">
-    <h1 class="title">LE 8<br>DE <em>SAM</em></h1>
-    <p class="sub">Le 8 américain du quartier, avec les règles de la maison.</p>
-    <div id="statsBox">
-      <div><b id="sW">0</b><span>victoires</span></div>
-      <div><b id="sL">0</b><span>défaites</span></div>
-      <div><b id="sP">0</b><span>parties</span></div>
+<div class="overlay hidden ecr" id="homeScreen">
+  <div class="fond fondUni"></div>
+  <div class="colonne">
+    <div class="rondRow">
+      <button class="rond" id="goSet" aria-label="Réglages"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm8.5-3.5c0-.5 0-1-.1-1.4l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2.4-1.4L15.2 2h-4l-.4 2.6a7.6 7.6 0 0 0-2.4 1.4l-2.4-1-2 3.4 2 1.6a8.6 8.6 0 0 0 0 2.9l-2 1.6 2 3.4 2.4-1c.7.6 1.5 1 2.4 1.4l.4 2.6h4l.4-2.6c.9-.3 1.7-.8 2.4-1.4l2.4 1 2-3.4-2-1.6c.1-.5.1-1 .1-1.4Z"/></svg></button>
+      <button class="rond" id="fsHome" aria-label="Plein écran"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     </div>
-    <div id="vsList"></div>
-    <button class="btn" id="goSolo">Jouer hors ligne</button>
-    <button class="btn ghost" id="goCreate">Créer une partie en ligne</button>
-    <button class="btn ghost" id="goJoin">Rejoindre une partie</button>
-    <button class="btn ghost" id="goRules">Les règles</button>
-    <button class="btn ghost" id="goSet">Réglages</button>
-    <button class="btn ghost" id="fsHome">Plein écran</button>
-    <button class="btn ghost" id="resetStats">Remettre les compteurs à zéro</button>
-    <button class="btn ghost diagBtn">⚑ Rapport</button>
+    <div class="banniere"></div>
+
+    <button class="gros or" id="goSolo">
+      <span class="ill illCartes"></span>
+      <span class="grosTxt"><b>JOUER EN SOLO</b><i>Affronte Sam et sa bande</i></span>
+      <span class="chev">›</span>
+    </button>
+
+    <button class="gros bleu" id="goOnline">
+      <span class="ill illGlobe"></span>
+      <span class="grosTxt"><b>JOUER EN LIGNE</b><i>Créer ou rejoindre une partie</i></span>
+      <span class="chev">›</span>
+    </button>
+
+    <button class="carteProfil" id="goProfil">
+      <span class="pAvatar" id="homeAvatar"></span>
+      <span class="pNom"><b id="homeNom">Joueur</b><i id="homeVD"></i></span>
+      <span class="pChiffres">
+        <span><b id="sW">0</b>Victoires</span>
+        <span><b id="sL">0</b>Défaites</span>
+        <span><b id="sP">0</b>Parties</span>
+      </span>
+    </button>
+
+    <div class="quatre">
+      <button class="petit or" id="goRules"><svg viewBox="0 0 24 24"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/></svg>Règles</button>
+      <button class="petit bleu" id="goStats"><svg viewBox="0 0 24 24"><path d="M5 20V10h3v10zM10.5 20V4h3v16zM16 20v-7h3v7z"/></svg>Statistiques</button>
+      <button class="petit violet diagBtn"><svg viewBox="0 0 24 24"><path d="M6 21V4h10l-1.5 3.5L16 11H7"/></svg>Rapport</button>
+      <button class="petit rouge" id="resetStats"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 2.5 5.8M4 19v-5h5"/></svg>Réinitialiser</button>
+    </div>
     <p class="hint" id="homeHint"></p>
-    <p class="hint" id="versionHome" style="text-align:center;margin-top:10px"></p>
+    <p class="version" id="versionHome"></p>
+  </div>
+</div>
+
+<div class="overlay hidden ecr" id="onlineScreen">
+  <div class="fond fondEnLigne"></div>
+  <div class="colonne">
+    <div class="rondRow"><button class="rond" id="onlineSet" aria-label="Réglages"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/></svg></button></div>
+    <div class="banniere banniereEnLigne"></div>
+    <button class="gros or" id="goCreate">
+      <span class="ill illCartes"></span>
+      <span class="grosTxt"><b>CRÉER UNE PARTIE</b><i>Tu invites, tu lances</i></span>
+      <span class="chev">›</span>
+    </button>
+    <button class="gros bleu" id="goJoin">
+      <span class="ill illGlobe"></span>
+      <span class="grosTxt"><b>REJOINDRE</b><i>Avec le code d'un pote</i></span>
+      <span class="chev">›</span>
+    </button>
+    <div class="quatre deux">
+      <button class="petit violet diagBtn"><svg viewBox="0 0 24 24"><path d="M6 21V4h10l-1.5 3.5L16 11H7"/></svg>Rapport</button>
+      <button class="petit bleu" id="onlineBack"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>Retour</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden ecr" id="profilScreen">
+  <div class="fond fondUni"></div>
+  <div class="colonne">
+    <h2 class="titreEcr">Ton profil</h2>
+    <div class="carteProfil fixe">
+      <span class="pAvatar" id="profAvatar"></span>
+      <span class="pNom"><b id="profNomVu">Joueur</b><i id="profVD"></i></span>
+    </div>
+    <input id="profNom" placeholder="Ton nom" maxlength="14" autocomplete="off">
+    <p class="sect">Ton image</p>
+    <div class="avatars" id="profAvatars"></div>
+    <p class="hint">Tu peux aussi mettre une photo à toi.</p>
+    <label class="btn ghost" for="profPhoto">Choisir une photo</label>
+    <input type="file" id="profPhoto" accept="image/*" style="display:none">
+    <p class="sect">Tes statistiques</p>
+    <div id="profStats"></div>
+    <p class="sect">Ton code de sauvegarde</p>
+    <p class="hint">Copie-le et garde-le : il te permet de retrouver ton profil sur un autre téléphone.</p>
+    <textarea id="profCode" readonly rows="2"></textarea>
+    <div class="quatre deux">
+      <button class="petit or" id="profCopier"><svg viewBox="0 0 24 24"><path d="M8 8h11v11H8zM5 5h11v3H8v8H5z"/></svg>Copier</button>
+      <button class="petit bleu" id="profColler"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4M5 20h14"/></svg>Restaurer</button>
+    </div>
+    <button class="btn ghost" id="profBack">Retour</button>
   </div>
 </div>
 

@@ -5,14 +5,14 @@
    1 · RÉGLAGES
    ============================================================ */
 const IMG = {
-  quartier:"images/quartier.webp",
-  studio:"images/studio.webp",
-  sushi:"images/sushi.webp",
-  sam:"images/sam.webp",
-  yuns:"images/yuns.webp",
-  mehmet:"images/mehmet.webp",
-  hamza:"images/hamza.webp",
-  nacime:"images/nacime.webp"
+  quartier:"images/decors/quartier.webp",
+  studio:"images/decors/studio.webp",
+  sushi:"images/decors/sushi.webp",
+  sam:"images/personnages/sam.webp",
+  yuns:"images/personnages/yuns.webp",
+  mehmet:"images/personnages/mehmet.webp",
+  hamza:"images/personnages/hamza.webp",
+  nacime:"images/personnages/nacime.webp"
 };
 
 const CHARS = {
